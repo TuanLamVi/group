@@ -54,22 +54,23 @@ async function loadGroups() {
     const isOwner = group.owner === currentUser;
 
     const div = document.createElement("div");
+div.className = "card";
     div.style.border = "1px solid #ccc";
     div.style.marginTop = "10px";
     div.style.padding = "10px";
 
-    div.innerHTML = `
-      <h3>${group.name}</h3>
-      <p>💰 ${group.balance.toLocaleString()} VND</p>
-      <p>👑 Chủ nhóm: ${group.owner}</p>
+   div.innerHTML = `
+  <h3>${group.name}</h3>
+  <p class="balance">💰 ${group.balance.toLocaleString()} VND</p>
+  <p>👑 ${group.owner}</p>
 
-      <button onclick="addMoney('${id}', ${group.balance})">+ Thu</button>
-      <button onclick="spendMoney('${id}', ${group.balance})">- Chi</button>
-      
-      ${isOwner ? `<button onclick="addMember('${id}')">➕ Thêm thành viên</button>` : ""}
+  <button class="btn-add" onclick="addMoney('${id}', ${group.balance})">+ Thu</button>
+  <button class="btn-sub" onclick="spendMoney('${id}', ${group.balance})">- Chi</button>
+  
+  ${isOwner ? `<button class="btn-member" onclick="addMember('${id}')">+ Thành viên</button>` : ""}
 
-      <button onclick="viewHistory('${id}')">📜 Lịch sử</button>
-    `;
+  <button class="btn-history" onclick="viewHistory('${id}')">📜 Lịch sử</button>
+`;
 
     container.appendChild(div);
   });
