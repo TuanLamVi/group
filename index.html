@@ -8,22 +8,21 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- MÀN HÌNH 1: XÁC THỰC (ĐĂNG NHẬP / ĐĂNG KÝ) -->
+        <!-- MÀN HÌNH 1: XÁC THỰC -->
         <div id="auth-screen" class="screen">
             <div class="card login-card">
                 <h2 id="auth-title">Đăng nhập</h2>
                 <p>Quản lý quỹ nhóm minh bạch</p>
                 
-                <!-- Form Đăng Ký (Ẩn mặc định) -->
                 <div id="register-form" class="hidden">
                     <input type="text" id="reg-name" placeholder="Họ và tên..." autocomplete="off">
                     <input type="tel" id="reg-phone" placeholder="Số điện thoại..." autocomplete="off">
+                    <input type="text" id="reg-address" placeholder="Địa chỉ thường trú..." autocomplete="off">
                     <input type="password" id="reg-password" placeholder="Mật khẩu (ít nhất 8 ký tự)...">
                     <button id="btn-register-submit" class="btn btn-success">Đăng ký ngay</button>
                     <p style="margin-top: 15px; font-size: 14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color: #007bff;">Đăng nhập</a></p>
                 </div>
 
-                <!-- Form Đăng Nhập -->
                 <div id="login-form">
                     <input type="tel" id="login-phone" placeholder="Số điện thoại..." autocomplete="off">
                     <input type="password" id="login-password" placeholder="Mật khẩu...">
@@ -33,9 +32,8 @@
             </div>
         </div>
 
-        <!-- MÀN HÌNH 2: DASHBOARD (CÓ PROFILE) -->
+        <!-- MÀN HÌNH 2: DASHBOARD -->
         <div id="dashboard-screen" class="screen hidden">
-            <!-- Header Profile -->
             <div class="profile-header card">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <img id="user-avatar" src="" alt="Avatar" class="avatar-img">
@@ -78,7 +76,6 @@
                 <ul id="pending-list" class="transaction-list"></ul>
             </div>
 
-            <!-- Khu vực chờ duyệt thành viên -->
             <div id="pending-members-section" class="campaign-section hidden">
                 <h3 style="color: #ff9800;">⚠️ Đề xuất thêm thành viên</h3>
                 <div id="pending-members-list" class="transaction-list" style="padding: 10px; background: #fff; border-radius: 8px;"></div>
@@ -94,10 +91,10 @@
 
             <div class="campaign-section">
                 <div class="section-header">
-                    <h3>Thành viên nhóm</h3>
+                    <h3>Danh sách thành viên</h3>
                     <button id="btn-add-member" class="btn-sm btn-secondary">➕ Mời bạn</button>
                 </div>
-                <div id="member-list" class="transaction-list" style="padding: 10px; background: #fff; border-radius: 8px; font-size: 14px;"></div>
+                <div id="member-list" class="transaction-list" style="padding: 5px 10px; background: #fff; border-radius: 8px;"></div>
             </div>
 
             <div class="recent-transactions" style="margin-top: 20px;">
@@ -127,7 +124,8 @@
         <div class="modal-content">
             <h3>Sửa Thông Tin Cá Nhân</h3>
             <input type="text" id="edit-profile-name" placeholder="Họ và tên mới...">
-            <input type="text" id="edit-profile-avatar" placeholder="Link ảnh đại diện (để trống sẽ dùng ảnh mặc định)">
+            <input type="text" id="edit-profile-address" placeholder="Địa chỉ thường trú...">
+            <input type="text" id="edit-profile-avatar" placeholder="Link ảnh (để trống dùng ảnh mặc định)">
             <div class="modal-actions">
                 <button id="btn-cancel-profile" class="btn btn-secondary">Hủy</button>
                 <button id="btn-submit-profile" class="btn btn-success">Lưu lại</button>
