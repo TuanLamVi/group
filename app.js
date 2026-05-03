@@ -21,9 +21,13 @@ let currentUser = null; let currentGroupId = null; let currentGroupData = null; 
 let unsubUser = null; let unsubGroup = null; let unsubCampaigns = null; let unsubTx = null; let unsubNoti = null;
 
 let cachedTransactions = []; 
-let approvedTransactions = []; // Chứa danh sách đã duyệt để phân trang
-let currentTxPage = 1;
-const TX_PER_PAGE = 5; // Số giao dịch mỗi trang
+let approvedTransactions = []; 
+let currentTxPage = 1; const TX_PER_PAGE = 5; 
+
+// Mảng gom chung Yêu cầu duyệt (Thành viên + Thu/chi)
+let pendingMembersArr = [];
+let pendingTxArr = [];
+let currentPendingPage = 1; const PENDING_PER_PAGE = 5;
 
 const userCache = {};
 async function getUsersData(phoneArray) {
@@ -96,7 +100,8 @@ function loginSuccess(phone) {
 
 document.getElementById('btn-logout').addEventListener('click', () => { if (!confirm("Đăng xuất?")) return; localStorage.removeItem('userPhone'); currentUser = null; currentGroupId = null; if(unsubUser) unsubUser(); if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); if(unsubNoti) unsubNoti(); document.getElementById('login-phone').value = ''; document.getElementById('login-password').value = ''; dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); });
 
-// ================= 2. QUẢN LÝ NHÓM =================
+
+// ================= 2. QUẢN LÝ NHÓM CƠ BẢN =================
 function loadUserGroups(phone) {
     const q = query(collection(db, "groups"), where("members", "array-contains", phone));
     onSnapshot(q, (snapshot) => {
@@ -113,9 +118,9 @@ function loadUserGroups(phone) {
 document.getElementById('btn-create-group').addEventListener('click', async () => { const groupName = await window.customPrompt("Tạo Nhóm", "Tên nhóm..."); if (!groupName) return; try { await addDoc(collection(db, "groups"), { name: groupName, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); } catch (e) { alert("Lỗi: " + e.message); } });
 window.enterGroup = (groupId) => { currentGroupId = groupId; dashboardScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); initRealtimeListeners(); };
 document.getElementById('btn-back-dashboard').addEventListener('click', () => { if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); currentGroupId = null; currentGroupData = null; mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden'); });
+
 document.getElementById('btn-edit-profile').addEventListener('click', () => { window.openSettings(currentUser.phone); });
 document.getElementById('btn-cancel-settings').addEventListener('click', () => settingsModal.classList.add('hidden'));
-
 window.openSettings = async (targetPhone) => {
     const isSelf = (targetPhone === currentUser.phone); const targetUser = userCache[targetPhone] || { name: "", address: "", avatar: "" };
     document.getElementById('edit-profile-name').value = targetUser.name; document.getElementById('edit-profile-address').value = targetUser.address || ""; document.getElementById('edit-profile-avatar').value = targetUser.avatar || "";
@@ -132,7 +137,52 @@ window.openSettings = async (targetPhone) => {
 };
 document.getElementById('btn-submit-profile').addEventListener('click', async () => { const newName = document.getElementById('edit-profile-name').value.trim(); const newAddress = document.getElementById('edit-profile-address').value.trim(); const newAvatar = document.getElementById('edit-profile-avatar').value.trim(); if(!newName) return alert("Tên không được để trống!"); try { await updateDoc(doc(db, "users", currentUser.phone), { name: newName, address: newAddress, avatar: newAvatar }); userCache[currentUser.phone] = { ...currentUser, name: newName, address: newAddress, avatar: newAvatar }; settingsModal.classList.add('hidden'); alert("Đã lưu!"); } catch(e) { alert("Lỗi: " + e.message); } });
 
-// ================= 3. RENDER DANH BẠ =================
+
+// ================= 3. BẢNG TIN TỔNG HỢP: ĐỀ XUẤT CẦN DUYỆT =================
+async function renderUnifiedPendingList() {
+    const listDiv = document.getElementById('unified-pending-list');
+    const paginationControls = document.getElementById('pending-pagination-controls');
+    let allPending = [...pendingMembersArr, ...pendingTxArr];
+    
+    if (allPending.length === 0) {
+        listDiv.innerHTML = '<p style="text-align:center; color:gray; padding: 15px;">✅ Tuyệt vời, không có yêu cầu nào đang chờ xử lý.</p>';
+        paginationControls.style.display = 'none'; return;
+    }
+
+    const totalPages = Math.ceil(allPending.length / PENDING_PER_PAGE) || 1;
+    if (currentPendingPage > totalPages) currentPendingPage = totalPages;
+    document.getElementById('pending-page-info').innerText = `${currentPendingPage}/${totalPages}`;
+    document.getElementById('btn-pending-prev').disabled = (currentPendingPage === 1); document.getElementById('btn-pending-next').disabled = (currentPendingPage === totalPages);
+    paginationControls.style.display = totalPages > 1 ? 'flex' : 'none';
+
+    const startIdx = (currentPendingPage - 1) * PENDING_PER_PAGE;
+    const paginated = allPending.slice(startIdx, startIdx + PENDING_PER_PAGE);
+    listDiv.innerHTML = '';
+
+    // Load data user cho mảng Invite
+    let neededPhones = [];
+    paginated.forEach(item => { if (item.type === 'member_invite') { neededPhones.push(item.data.phone); neededPhones.push(item.data.proposedBy); }});
+    const usersData = await getUsersData(neededPhones);
+
+    paginated.forEach(item => {
+        if (item.type === 'member_invite') {
+            const pPhone = item.data.phone; const inviterPhone = item.data.proposedBy;
+            const puInfo = usersData[pPhone]; const inviterInfo = usersData[inviterPhone];
+            const defaultAvt = `https://ui-avatars.com/api/?name=${encodeURIComponent(puInfo.name)}&background=random&color=fff`;
+            let pAction = isManager ? `<button class="btn-sm btn-secondary btn-3d" onclick="window.viewUserProfile('${pPhone}', '${inviterInfo.name}')" style="padding:4px 8px;">👀 Xem</button><button class="btn-sm btn-success btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', true)" style="padding:4px 8px;">Duyệt</button> <button class="btn-sm btn-danger btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', false)" style="padding:4px 8px;">Từ chối</button>` : `<span style="font-size:12px; color:gray;">Đang chờ duyệt...</span>`;
+            listDiv.innerHTML += `<div class="pending-item" style="display:flex; justify-content:space-between; align-items:center; padding: 12px; margin-bottom: 10px; background: #FFFBEB; border-left: 4px solid #F59E0B; border-radius: 12px;"><div style="display:flex; align-items:center; gap: 10px;"><img src="${puInfo.avatar || defaultAvt}" style="width:36px; height:36px; border-radius:50%;"><div><div style="font-size:12px; font-weight:bold; color: #D97706; text-transform:uppercase;">Mời vào nhóm</div><div style="font-size:15px; font-weight:bold;">${puInfo.name}</div><div style="font-size:12px; color:gray;">Người mời: ${inviterInfo.name}</div></div></div><div style="display:flex; gap:5px; flex-direction: column; align-items: flex-end;">${pAction}</div></div>`;
+        } 
+        else if (item.type === 'transaction') {
+            const data = item.data; const docId = data.id;
+            const symbol = data.type === 'income' ? '+' : '-'; const color = data.type === 'income' ? '#10B981' : '#EF4444'; 
+            listDiv.innerHTML += `<div class="pending-item" style="padding: 12px; margin-bottom: 10px; background: #FEF2F2; border-left: 4px solid #EF4444; border-radius: 12px;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><div style="font-size:12px; font-weight:bold; color: #DC2626; text-transform:uppercase;">Đề xuất ${data.type === 'income' ? 'Thu' : 'Chi'} tiền</div><strong>${data.createdByName}</strong><br><span>${data.description}</span>: <b style="color:${color}; font-size:16px;">${symbol}${data.amount.toLocaleString()}đ</b></div>${isManager ? `<div class="pending-actions" style="display: flex; flex-direction: column; gap: 5px;"><button class="btn-approve btn-3d" onclick="window.reviewTx('${docId}', true)">Duyệt khoản này</button><button class="btn-reject btn-3d" onclick="window.reviewTx('${docId}', false)">Hủy</button></div>` : '<span style="font-size: 12px; color: gray;">Chờ duyệt...</span>'}</div></div>`;
+        }
+    });
+}
+document.getElementById('btn-pending-prev').addEventListener('click', () => { if (currentPendingPage > 1) { currentPendingPage--; renderUnifiedPendingList(); } });
+document.getElementById('btn-pending-next').addEventListener('click', () => { currentPendingPage++; renderUnifiedPendingList(); });
+
+// ================= 4. RENDER DANH BẠ =================
 let currentlyOpenMember = null; let cachedGroupMembersArray = []; let searchMemberQuery = ""; let currentMemberPage = 1; const MEMBERS_PER_PAGE = 10;
 window.toggleMemberDetails = (phone) => { if (currentlyOpenMember && currentlyOpenMember !== phone) { const oldEl = document.getElementById(`details-${currentlyOpenMember}`); if(oldEl) oldEl.classList.remove('open'); } const newEl = document.getElementById(`details-${phone}`); if(newEl) { newEl.classList.toggle('open'); if(newEl.classList.contains('open')) currentlyOpenMember = phone; else currentlyOpenMember = null; } };
 document.getElementById('search-member-input').addEventListener('input', (e) => { searchMemberQuery = e.target.value.toLowerCase().trim(); currentMemberPage = 1; renderMemberList(); });
@@ -170,40 +220,30 @@ function renderMemberList() {
     });
 }
 
-// ================= 4. GIAO DỊCH, PHÂN TRANG & BÌNH LUẬN =================
+// ================= 5. GIAO DỊCH, BÌNH LUẬN & LISTENER =================
 const FB_EMOJIS = { '👍': { text: 'Thích', color: '#056BF0' }, '❤️': { text: 'Yêu thích', color: '#F33E58' }, '🥰': { text: 'Thương', color: '#F7B125' }, '😂': { text: 'Haha', color: '#F7B125' }, '😮': { text: 'Wow', color: '#F7B125' }, '😢': { text: 'Buồn', color: '#F7B125' }, '😡': { text: 'Phẫn nộ', color: '#E9710F' } };
-
 window.toggleTxComments = (txId) => { const el = document.getElementById(`comments-${txId}`); if(el) el.classList.toggle('hidden'); };
 window.reactToTx = async (txId, emoji) => { try { const txRef = doc(db, "groups", currentGroupId, "transactions", txId); const txDoc = await getDoc(txRef); if(!txDoc.exists()) return; const reactions = txDoc.data().reactions || {}; if (reactions[currentUser.phone] === emoji) delete reactions[currentUser.phone]; else reactions[currentUser.phone] = emoji; await updateDoc(txRef, { reactions }); } catch(e) { console.error(e); } };
 window.submitComment = async (txId) => { const input = document.getElementById(`input-cmt-${txId}`); const text = input.value.trim(); if(!text) return; try { const txRef = doc(db, "groups", currentGroupId, "transactions", txId); await updateDoc(txRef, { comments: arrayUnion({ phone: currentUser.phone, name: currentUser.name, text: text, time: Date.now() }) }); input.value = ''; } catch(e) { console.error(e); } };
 
-function renderTransaction(data, docId, isPending) {
+function renderTransaction(data, docId) {
     const symbol = data.type === 'income' ? '+' : '-'; const color = data.type === 'income' ? '#10B981' : '#EF4444'; 
     const reactions = data.reactions || {}; const comments = data.comments || [];
-    
     let totalReacts = Object.keys(reactions).length; let uniqueEmojis = [...new Set(Object.values(reactions))].slice(0, 3).join('');
     let statsHtml = '';
     if (totalReacts > 0 || comments.length > 0) { statsHtml = `<div class="tx-stats"><div class="tx-stats-left">${totalReacts > 0 ? `${uniqueEmojis} ${totalReacts}` : ''}</div>${comments.length > 0 ? `<div class="tx-stats-right" onclick="window.toggleTxComments('${docId}')">${comments.length} bình luận</div>` : '<div></div>'}</div>`; }
-
     const myReaction = reactions[currentUser.phone]; let btnText = '👍 Thích'; let btnColor = '#65676B';
     if (myReaction && FB_EMOJIS[myReaction]) { btnText = `${myReaction} ${FB_EMOJIS[myReaction].text}`; btnColor = FB_EMOJIS[myReaction].color; }
-
     let popoverHtml = `<div class="reaction-popover">`; Object.keys(FB_EMOJIS).forEach(emj => { popoverHtml += `<span class="react-icon" onclick="event.stopPropagation(); window.reactToTx('${docId}', '${emj}')">${emj}</span>`; }); popoverHtml += `</div>`;
     let commentsHtml = comments.map(c => `<div class="comment-item"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff" class="comment-avatar"><div class="comment-bubble"><b>${c.name}</b><span>${c.text}</span></div></div>`).join('');
-
-    if (isPending) {
-        return `<li class="transaction-item pending-item"><div class="tx-top"><div><strong>${data.createdByName}</strong> đề xuất ${data.type === 'income' ? 'THU' : 'CHI'}<br><span>${data.description}</span>: <b style="color:${color}">${symbol}${data.amount.toLocaleString()}đ</b></div>${isManager ? `<div class="pending-actions"><button class="btn-approve btn-3d" onclick="window.reviewTx('${docId}', true)">Duyệt</button><button class="btn-reject btn-3d" onclick="window.reviewTx('${docId}', false)">Hủy</button></div>` : '<span style="font-size: 12px; color: gray;">Chờ...</span>'}</div></li>`;
-    } else {
-        return `
-        <li class="transaction-item">
-            <div class="tx-top"><div class="tx-info"><span class="tx-desc">${data.description}</span><span style="font-size: 12px; color: gray;">Bởi: ${data.createdByName}</span></div><strong style="color: ${color}; font-size: 18px;">${symbol}${data.amount.toLocaleString()} ₫</strong></div>
-            <div class="tx-interactions">${statsHtml}<div class="tx-actions"><div class="like-wrapper"><button class="action-btn-fb" style="color: ${btnColor};" onclick="window.reactToTx('${docId}', '${myReaction ? myReaction : '👍'}')">${btnText}</button>${popoverHtml}</div><button class="action-btn-fb" onclick="window.toggleTxComments('${docId}')">💬 Bình luận</button></div></div>
-            <div id="comments-${docId}" class="tx-comments-section hidden">${commentsHtml}<div class="comment-input-area"><input type="text" id="input-cmt-${docId}" placeholder="Viết bình luận..." onkeypress="if(event.key==='Enter') window.submitComment('${docId}')"><button onclick="window.submitComment('${docId}')">Gửi</button></div></div>
-        </li>`;
-    }
+    return `
+    <li class="transaction-item">
+        <div class="tx-top"><div class="tx-info"><span class="tx-desc">${data.description}</span><span style="font-size: 12px; color: gray;">Bởi: ${data.createdByName}</span></div><strong style="color: ${color}; font-size: 18px;">${symbol}${data.amount.toLocaleString()} ₫</strong></div>
+        <div class="tx-interactions">${statsHtml}<div class="tx-actions"><div class="like-wrapper"><button class="action-btn-fb" style="color: ${btnColor};" onclick="window.reactToTx('${docId}', '${myReaction ? myReaction : '👍'}')">${btnText}</button>${popoverHtml}</div><button class="action-btn-fb" onclick="window.toggleTxComments('${docId}')">💬 Bình luận</button></div></div>
+        <div id="comments-${docId}" class="tx-comments-section hidden">${commentsHtml}<div class="comment-input-area"><input type="text" id="input-cmt-${docId}" placeholder="Viết bình luận..." onkeypress="if(event.key==='Enter') window.submitComment('${docId}')"><button onclick="window.submitComment('${docId}')">Gửi</button></div></div>
+    </li>`;
 }
 
-// Logic phân trang lịch sử quỹ
 function renderPaginatedTransactions() {
     const txList = document.getElementById('transaction-list');
     const totalPages = Math.ceil(approvedTransactions.length / TX_PER_PAGE) || 1;
@@ -211,17 +251,15 @@ function renderPaginatedTransactions() {
     document.getElementById('tx-page-info').innerText = `${currentTxPage}/${totalPages}`;
     document.getElementById('btn-tx-prev-page').disabled = (currentTxPage === 1);
     document.getElementById('btn-tx-next-page').disabled = (currentTxPage === totalPages);
-
     const startIdx = (currentTxPage - 1) * TX_PER_PAGE;
     const paginated = approvedTransactions.slice(startIdx, startIdx + TX_PER_PAGE);
-
     txList.innerHTML = '';
-    if (paginated.length === 0) { txList.innerHTML = '<p style="text-align:center; color:gray; padding:10px;">Chưa có giao dịch.</p>'; return; }
-    paginated.forEach(tx => { txList.innerHTML += renderTransaction(tx, tx.id, false); });
+    if (paginated.length === 0) { txList.innerHTML = '<p style="text-align:center; color:gray; padding:10px;">Chưa có giao dịch chính thức nào.</p>'; return; }
+    paginated.forEach(tx => { txList.innerHTML += renderTransaction(tx, tx.id); });
 }
-
 document.getElementById('btn-tx-prev-page').addEventListener('click', () => { if (currentTxPage > 1) { currentTxPage--; renderPaginatedTransactions(); } });
 document.getElementById('btn-tx-next-page').addEventListener('click', () => { currentTxPage++; renderPaginatedTransactions(); });
+
 
 function initRealtimeListeners() {
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), async (docSnap) => {
@@ -237,42 +275,30 @@ function initRealtimeListeners() {
         cachedGroupMembersArray = currentGroupData.members.map(phone => { return { phone: phone, ...membersDataRaw[phone] }; });
         renderMemberList();
 
-        const pendingMembersDiv = document.getElementById('pending-members-list'); const pendingSection = document.getElementById('pending-members-section');
+        // GOM YÊU CẦU THÀNH VIÊN VÀO BẢNG TIN TỔNG HỢP
         const pendingInvites = currentGroupData.pendingInvites || [];
-        if (pendingInvites.length > 0) {
-            pendingSection.classList.remove('hidden'); pendingMembersDiv.innerHTML = '';
-            for (const invite of pendingInvites) {
-                const pPhone = invite.phone; const inviterPhone = invite.proposedBy;
-                const puInfoArray = await getUsersData([pPhone, inviterPhone]); const puInfo = puInfoArray[pPhone]; const inviterInfo = puInfoArray[inviterPhone];
-                const defaultAvt = `https://ui-avatars.com/api/?name=${encodeURIComponent(puInfo.name)}&background=random&color=fff`;
-                let pAction = isManager ? `<button class="btn-sm btn-secondary btn-3d" onclick="window.viewUserProfile('${pPhone}', '${inviterInfo.name}')" style="padding:4px 8px;">👀 Xem</button><button class="btn-sm btn-success btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', true)" style="padding:4px 8px;">Duyệt</button> <button class="btn-sm btn-danger btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', false)" style="padding:4px 8px;">Từ chối</button>` : `<span style="font-size:12px; color:gray;">Chờ duyệt...</span>`;
-                pendingMembersDiv.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid #eee;"><div style="display:flex; align-items:center; gap: 10px;"><img src="${puInfo.avatar || defaultAvt}" style="width:36px; height:36px; border-radius:50%;"><div><div style="font-size:15px; font-weight:bold;">${puInfo.name}</div><div style="font-size:12px; color:gray;">Bởi: ${inviterInfo.name}</div></div></div><div style="display:flex; gap:5px;">${pAction}</div></div>`;
-            }
-        } else { pendingSection.classList.add('hidden'); }
+        pendingMembersArr = pendingInvites.map(inv => ({ type: 'member_invite', data: inv }));
+        renderUnifiedPendingList();
     });
 
     unsubCampaigns = onSnapshot(collection(db, "groups", currentGroupId, "campaigns"), (snapshot) => { const campaignList = document.getElementById('campaign-list'); const txSelect = document.getElementById('tx-campaign-select'); campaignList.innerHTML = ''; txSelect.innerHTML = '<option value="">-- Quỹ chung --</option>'; snapshot.forEach((docSnap) => { const data = docSnap.data(); if (data.status === 'active') { campaignList.innerHTML += `<div class="campaign-card"><div class="campaign-header"><span>🏕️ ${data.name}</span><span class="campaign-balance">${data.balance.toLocaleString()} ₫</span></div>${isManager ? `<button class="btn-close-campaign" onclick="window.closeCampaign('${docSnap.id}', '${data.name}')">Tất toán</button>` : ''}</div>`; txSelect.innerHTML += `<option value="${docSnap.id}">${data.name}</option>`; } }); });
     
     const txQuery = query(collection(db, "groups", currentGroupId, "transactions"), orderBy("createdAt", "desc"));
     unsubTx = onSnapshot(txQuery, (snapshot) => { 
-        const pendingList = document.getElementById('pending-list'); const pendingSection = document.getElementById('pending-section'); 
-        pendingList.innerHTML = ''; let hasPending = false; cachedTransactions = []; approvedTransactions = [];
-
+        cachedTransactions = []; approvedTransactions = []; pendingTxArr = [];
         snapshot.forEach((docSnap) => { 
             const data = docSnap.data(); cachedTransactions.push({ id: docSnap.id, ...data });
-            if (data.status === 'pending') { hasPending = true; pendingList.innerHTML += renderTransaction(data, docSnap.id, true); } 
+            if (data.status === 'pending') { pendingTxArr.push({ type: 'transaction', data: { id: docSnap.id, ...data } }); } 
             else if (data.status === 'approved') { approvedTransactions.push({ id: docSnap.id, ...data }); } 
         }); 
-        pendingSection.classList.toggle('hidden', !hasPending); 
         
-        // Gọi hàm phân trang vẽ ra màn hình
         renderPaginatedTransactions();
-
+        renderUnifiedPendingList(); // Cập nhật Bảng tin tổng hợp
         if (!document.getElementById('filter-modal').classList.contains('hidden')) { applyFilter(); }
     });
 }
 
-// ================= 5. KIỂM DUYỆT & THAO TÁC CƠ SỞ DỮ LIỆU CÒN LẠI =================
+// ================= 6. KIỂM DUYỆT & THAO TÁC DATA =================
 window.viewUserProfile = async (phone, inviterName) => { const dataObj = await getUsersData([phone]); const user = dataObj[phone]; document.getElementById('view-profile-avatar').src = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff`; document.getElementById('view-profile-name').innerText = user.name; document.getElementById('view-profile-phone').innerText = user.phone; document.getElementById('view-profile-address').innerText = user.address || 'Chưa cập nhật'; document.getElementById('view-profile-inviter').innerText = inviterName; viewProfileModal.classList.remove('hidden'); };
 document.getElementById('btn-close-view-profile').addEventListener('click', () => viewProfileModal.classList.add('hidden'));
 
