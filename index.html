@@ -43,7 +43,8 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 5px; margin-top: 10px;">
-                    <button id="btn-edit-profile" class="btn-sm btn-secondary">✏️ Sửa thông tin</button>
+                    <!-- ĐÃ ĐỔI THÀNH NÚT CÀI ĐẶT -->
+                    <button id="btn-edit-profile" class="btn-sm btn-secondary">⚙️ Cài đặt</button>
                     <button id="btn-logout" class="btn-sm btn-danger">Đăng xuất</button>
                 </div>
             </div>
@@ -119,16 +120,31 @@
         </div>
     </div>
 
-    <!-- MODAL PROFILE -->
-    <div id="profile-modal" class="modal hidden">
+    <!-- MODAL SETTINGS (CÀI ĐẶT CHUNG CHIA 2 PHẦN) -->
+    <div id="settings-modal" class="modal hidden">
         <div class="modal-content">
-            <h3>Sửa Thông Tin Cá Nhân</h3>
-            <input type="text" id="edit-profile-name" placeholder="Họ và tên mới...">
-            <input type="text" id="edit-profile-address" placeholder="Địa chỉ thường trú...">
-            <input type="text" id="edit-profile-avatar" placeholder="Link ảnh (để trống dùng ảnh mặc định)">
-            <div class="modal-actions">
-                <button id="btn-cancel-profile" class="btn btn-secondary">Hủy</button>
-                <button id="btn-submit-profile" class="btn btn-success">Lưu lại</button>
+            <h3 style="text-align: center; margin-bottom: 15px;">⚙️ Cài đặt</h3>
+            
+            <!-- Phần 1: Thông tin cá nhân -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <h4 style="margin-bottom: 10px; font-size: 14px; color: #007bff;">👤 Thông tin cá nhân</h4>
+                <input type="text" id="edit-profile-name" placeholder="Họ và tên...">
+                <input type="text" id="edit-profile-address" placeholder="Địa chỉ thường trú...">
+                <input type="text" id="edit-profile-avatar" placeholder="Link ảnh (để trống dùng mặc định)">
+                <button id="btn-submit-profile" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Lưu Thay Đổi</button>
+            </div>
+
+            <!-- Phần 2: Quản lý thành viên (Chỉ hiện khi Trưởng nhóm mở Cài đặt của người khác) -->
+            <div id="settings-section-admin" class="hidden" style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <h4 style="margin-bottom: 10px; font-size: 14px; color: #856404;">👑 Quản trị nhóm</h4>
+                <p style="font-size: 12px; color: gray; margin-bottom: 10px;">Các quyền dành riêng cho Trưởng nhóm</p>
+                <div id="admin-actions-container" style="display: flex; gap: 10px;">
+                    <!-- JS sẽ tự động in nút Lên phó / Xóa vào đây -->
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button id="btn-cancel-settings" class="btn btn-secondary" style="width: 100%;">Đóng</button>
             </div>
         </div>
     </div>
