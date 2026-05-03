@@ -18,6 +18,7 @@
                     <input type="text" id="reg-name" placeholder="Họ và tên..." autocomplete="off">
                     <input type="tel" id="reg-phone" placeholder="Số điện thoại..." autocomplete="off">
                     <input type="text" id="reg-address" placeholder="Địa chỉ thường trú..." autocomplete="off">
+                    <input type="number" id="reg-pin" placeholder="Thiết lập mã PIN 4 số (để khôi phục mật khẩu)..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
                     <input type="password" id="reg-password" placeholder="Mật khẩu (ít nhất 8 ký tự)...">
                     <button id="btn-register-submit" class="btn btn-success btn-3d">Đăng ký ngay</button>
                     <p style="margin-top: 15px; font-size: 14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color: #007bff;">Đăng nhập</a></p>
