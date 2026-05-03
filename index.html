@@ -1,9 +1,24 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%234776E6;stop-opacity:1' /><stop offset='100%25' style='stop-color:%238E54E9;stop-opacity:1' /></linearGradient></defs><rect width='100' height='100' rx='25' fill='url(%23grad)'/><path d='M30 35h40v30c0 5.5-4.5 10-10 10H40c-5.5 0-10-4.5-10-10V35z' fill='white' opacity='0.9'/><path d='M30 35h40v10H30z' fill='white'/><circle cx='50' cy='58' r='8' fill='%234776E6'/><path d='M50 50c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zm-7 14c-1.7 0-3 1.3-3 3v1h20v-1c0-1.7-1.3-3-3-3h-14z' fill='%234776E6' transform='scale(0.5) translate(50, 60)'/></svg>">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Điều Hành Quỹ & Công Việc</title>
+    <title>Nhóm & Công Việc</title>
+    <!-- 1. Gọi file Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- 2. Đổi màu thanh trạng thái (cột sóng/pin) trên điện thoại thành màu xanh của App -->
+<meta name="theme-color" content="#4776E6">
+
+<!-- 3. Kích hoạt Service Worker -->
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(() => {
+            console.log("Service Worker đã sẵn sàng!");
+        });
+    }
+</script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
