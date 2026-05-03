@@ -18,12 +18,12 @@
             </div>
         </div>
 
-        <!-- MÀN HÌNH CHÍNH (Ẩn lúc đầu) -->
+        <!-- MÀN HÌNH CHÍNH -->
         <div id="main-screen" class="screen hidden">
-            <!-- Thẻ hiển thị số dư -->
+            <!-- Thẻ hiển thị số dư chung -->
             <div class="card balance-card">
-                <h3>Nhóm: <span id="group-name">Chưa chọn nhóm</span></h3>
-                <p class="balance-title">Số dư hiện tại</p>
+                <h3>Nhóm: <span id="group-name">Đang tải...</span></h3>
+                <p class="balance-title">Số dư quỹ chung</p>
                 <h1 class="balance-amount"><span id="balance">0</span> ₫</h1>
             </div>
 
@@ -31,25 +31,47 @@
             <div class="action-buttons">
                 <button id="btn-income" class="btn btn-success">➕ Thu tiền</button>
                 <button id="btn-expense" class="btn btn-danger">➖ Chi tiền</button>
-                <button id="btn-history" class="btn btn-secondary">📜 Lịch sử</button>
             </div>
 
-            <!-- Khu vực hiển thị danh sách giao dịch gần đây -->
+            <!-- Khu vực Quỹ Sự Kiện -->
+            <div class="campaign-section">
+                <div class="section-header">
+                    <h3>Quỹ Sự Kiện Đang Chạy</h3>
+                    <button id="btn-create-campaign" class="btn-sm btn-primary">➕ Tạo sự kiện</button>
+                </div>
+                <div id="campaign-list" class="campaign-list">
+                    <!-- Danh sách sự kiện sẽ hiển thị ở đây -->
+                </div>
+            </div>
+
+            <!-- Khu vực hiển thị danh sách giao dịch -->
             <div class="recent-transactions">
                 <h3>Hoạt động gần đây</h3>
-                <ul id="transaction-list" class="transaction-list">
-                    <!-- Dữ liệu mẫu, sau này sẽ đổ từ Firebase vào -->
-                    <li class="transaction-item">
-                        <div class="tx-info">
-                            <span class="tx-desc">Chưa có giao dịch nào</span>
-                        </div>
-                    </li>
-                </ul>
+                <ul id="transaction-list" class="transaction-list"></ul>
             </div>
         </div>
     </div>
 
-    <!-- Gọi file JS chứa logic -->
+    <!-- MODAL NHẬP GIAO DỊCH -->
+    <div id="tx-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="tx-modal-title">Thêm Giao Dịch</h3>
+            <input type="number" id="tx-amount" placeholder="Nhập số tiền (VNĐ)...">
+            <input type="text" id="tx-desc" placeholder="Mô tả (Ví dụ: Thu tiền vé, Mua nước...)">
+            
+            <label for="tx-campaign-select">Nguồn tiền:</label>
+            <select id="tx-campaign-select">
+                <option value="">-- Quỹ chung của nhóm --</option>
+                <!-- Các sự kiện đang chạy sẽ được tự động thêm vào đây -->
+            </select>
+            
+            <div class="modal-actions">
+                <button id="btn-cancel-tx" class="btn btn-secondary">Hủy</button>
+                <button id="btn-submit-tx" class="btn btn-success">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="app.js"></script>
 </body>
 </html>
