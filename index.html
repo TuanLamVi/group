@@ -62,32 +62,58 @@
         <div id="main-screen" class="screen hidden">
             <button id="btn-back-dashboard" class="btn-sm btn-secondary btn-3d" style="margin-bottom: 15px; width: auto;">🔙 Trở về</button>
             
-            <div class="card balance-card">
-                <h3>Nhóm: <span id="group-name">Đang tải...</span></h3>
-                <p class="balance-title">Số dư quỹ chung</p>
-                <h1 class="balance-amount"><span id="balance">0</span> ₫</h1>
-                <p style="font-size: 12px; margin-top: 10px; color: #FDE68A;">Vai trò: <span id="user-role">...</span></p>
+            <!-- KHU VỰC 1: BẢNG THÔNG BÁO / ĐỀ XUẤT (TOP) -->
+            <div class="card" style="padding: 20px; margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                    <h3 style="margin: 0; color: #1e293b; font-size: 18px;">Nhóm: <span id="group-name" style="color: #4776E6;">Đang tải...</span></h3>
+                    <span id="user-role" style="font-size: 12px;">...</span>
+                </div>
+                
+                <h4 style="color: #EF4444; margin-bottom: 12px; font-size: 15px; display: flex; align-items: center; gap: 5px;">⚠️ Việc cần xử lý ngay</h4>
+                <div id="unified-pending-list" class="transaction-list" style="min-height: 80px;">
+                    <!-- JS sẽ đổ danh sách chờ duyệt (Thành viên + Thu/chi) vào đây -->
+                </div>
+                
+                <!-- Phân trang Bảng đề xuất -->
+                <div id="pending-pagination-controls" style="display: none; justify-content: center; gap: 15px; margin-top: 15px; align-items: center;">
+                    <button id="btn-pending-prev" class="btn-sm btn-secondary btn-3d">◀</button>
+                    <span id="pending-page-info" style="font-weight: bold; font-size: 14px;">1/1</span>
+                    <button id="btn-pending-next" class="btn-sm btn-secondary btn-3d">▶</button>
+                </div>
             </div>
 
-            <!-- KHU VỰC ƯU TIÊN 1: CÁC ĐỀ XUẤT CẦN XỬ LÝ (Đưa lên đầu) -->
-            <div id="pending-section" class="recent-transactions hidden" style="margin-bottom: 20px;">
-                <h3 style="color: #EF4444; margin-bottom: 10px;">⚠️ Giao dịch chờ duyệt</h3>
-                <ul id="pending-list" class="transaction-list"></ul>
-            </div>
-            
-            <div id="pending-members-section" class="campaign-section hidden" style="margin-bottom: 20px;">
-                <h3 style="color: #F59E0B; margin-bottom: 10px;">⚠️ Đề xuất thành viên mới</h3>
-                <div id="pending-members-list" class="transaction-list" style="padding: 10px; background: #fff; border-radius: 16px;"></div>
+            <!-- KHU VỰC 2: QUẢN LÝ THÀNH VIÊN -->
+            <div class="campaign-section" style="margin-bottom: 24px;">
+                <div class="section-header" style="margin-bottom: 10px;">
+                    <h3 style="margin:0;">Thành viên nhóm</h3>
+                    <button id="btn-add-member" class="btn-sm btn-secondary btn-3d">➕ Mời bạn</button>
+                </div>
+                <div style="position: relative; margin-bottom: 15px;">
+                    <span style="position: absolute; left: 12px; top: 12px; color: gray;">🔍</span>
+                    <input type="text" id="search-member-input" placeholder="Tìm tên hoặc SĐT..." style="width: 100%; padding: 10px 10px 10px 35px; border-radius: 12px; border: 2px solid #e2e8f0; outline: none; transition: 0.2s;">
+                </div>
+                <div id="member-list" class="transaction-list" style="padding: 5px 10px; background: #fff; border-radius: 16px;"></div>
+                
+                <div id="pagination-controls" style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; align-items: center;">
+                    <button id="btn-prev-page" class="btn-sm btn-secondary btn-3d">◀</button>
+                    <span id="page-info" style="font-weight: bold; font-size: 14px;">1/1</span>
+                    <button id="btn-next-page" class="btn-sm btn-secondary btn-3d">▶</button>
+                </div>
             </div>
 
-            <!-- KHU VỰC 2: QUẢN LÝ TÀI CHÍNH & QUỸ -->
-            <div class="campaign-section">
+            <!-- KHU VỰC 3: NGHIỆP VỤ TÀI CHÍNH & QUỸ -->
+            <div class="campaign-section" style="margin-bottom: 24px;">
                 <div class="section-header" style="margin-bottom: 15px;">
-                    <h3>Quản lý Quỹ</h3>
+                    <h3 style="margin:0;">Nghiệp vụ Quỹ</h3>
                     <button id="btn-create-campaign" class="btn-sm btn-primary btn-3d hidden">➕ Tạo sự kiện</button>
                 </div>
                 
-                <!-- Nút Thu/Chi chuyển vào đây -->
+                <!-- Card Số dư được gom vào đây -->
+                <div class="balance-card" style="border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+                    <p class="balance-title">SỐ DƯ QUỸ CHUNG</p>
+                    <h1 class="balance-amount"><span id="balance">0</span> ₫</h1>
+                </div>
+
                 <div class="action-buttons" style="margin-bottom: 15px;">
                     <button id="btn-income" class="btn btn-success btn-3d">➕ Thu tiền</button>
                     <button id="btn-expense" class="btn btn-danger btn-3d">➖ Chi tiền</button>
@@ -96,42 +122,24 @@
                 <div id="campaign-list" class="campaign-list"></div>
             </div>
 
-            <div class="recent-transactions" style="margin-top: 24px;">
+            <!-- KHU VỰC 4: LỊCH SỬ GIAO DỊCH CHÍNH THỨC -->
+            <div class="recent-transactions">
                 <div class="section-header">
                     <h3 style="margin: 0;">Lịch sử quỹ</h3>
                     <button id="btn-open-filter" class="btn-sm btn-secondary btn-3d" style="background-color: #0EA5E9; box-shadow: 0 5px 0 #0284C7;">🔍 Tra cứu</button>
                 </div>
                 <ul id="transaction-list" class="transaction-list"></ul>
                 
-                <!-- Phân trang 5 giao dịch/trang -->
                 <div id="tx-pagination-controls" style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; align-items: center;">
                     <button id="btn-tx-prev-page" class="btn-sm btn-secondary btn-3d">◀</button>
                     <span id="tx-page-info" style="font-weight: bold; font-size: 14px;">1/1</span>
                     <button id="btn-tx-next-page" class="btn-sm btn-secondary btn-3d">▶</button>
                 </div>
             </div>
-
-            <!-- KHU VỰC 3: QUẢN LÝ THÀNH VIÊN -->
-            <div class="campaign-section" style="margin-top: 24px;">
-                <div class="section-header" style="margin-bottom: 10px;">
-                    <h3>Thành viên</h3>
-                    <button id="btn-add-member" class="btn-sm btn-secondary btn-3d">➕ Mời bạn</button>
-                </div>
-                <div style="position: relative; margin-bottom: 15px;">
-                    <span style="position: absolute; left: 12px; top: 12px; color: gray;">🔍</span>
-                    <input type="text" id="search-member-input" placeholder="Tìm tên hoặc SĐT..." style="width: 100%; padding: 10px 10px 10px 35px; border-radius: 12px; border: 2px solid #e2e8f0; outline: none; transition: 0.2s;">
-                </div>
-                <div id="member-list" class="transaction-list" style="padding: 5px 10px; background: #fff; border-radius: 16px;"></div>
-                <div id="pagination-controls" style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; align-items: center;">
-                    <button id="btn-prev-page" class="btn-sm btn-secondary btn-3d">◀</button>
-                    <span id="page-info" style="font-weight: bold; font-size: 14px;">1/1</span>
-                    <button id="btn-next-page" class="btn-sm btn-secondary btn-3d">▶</button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- CÁC MODAL HỆ THỐNG -->
+    <!-- CÁC MODAL HỆ THỐNG GIỮ NGUYÊN BẢN TRƯỚC -->
     <div id="view-profile-modal" class="modal hidden"><div class="modal-content" style="text-align: center;"><h3 style="margin-bottom: 15px;">👀 Hồ sơ thành viên</h3><img id="view-profile-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px; border: 3px solid #4776E6;"><h2 id="view-profile-name" style="font-size: 20px; color: #1e293b;">Tên</h2><p style="color: gray; font-size: 14px; margin-bottom: 15px;">📞 <span id="view-profile-phone">SĐT</span></p><div style="background: #f8fafc; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 15px;"><p>🏠 <b>Địa chỉ:</b> <span id="view-profile-address">...</span></p><p style="margin-top: 8px;">👤 <b>Người đề xuất:</b> <span id="view-profile-inviter">...</span></p></div><button id="btn-close-view-profile" class="btn btn-secondary btn-3d">Đóng</button></div></div>
     <div id="filter-modal" class="modal hidden"><div class="modal-content" style="max-height: 85vh;"><h3 style="text-align: center; margin-bottom: 10px;">🔍 Tra cứu</h3><div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;"><select id="filter-type"><option value="all">Tất cả</option><option value="income">Chỉ Thu ➕</option><option value="expense">Chỉ Chi ➖</option></select><select id="filter-member"><option value="all">Mọi thành viên</option></select></div><div style="background: #f8f9fa; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center; border: 1px solid #ddd; margin-bottom: 10px;">Tổng: <span id="filter-total-amount" style="font-size: 18px;">0</span> ₫</div><div style="overflow-y: auto; max-height: 40vh;"><ul id="filter-results-list" class="transaction-list"></ul></div><div class="modal-actions" style="margin-top: 10px;"><button id="btn-close-filter" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
     <div id="noti-modal" class="modal hidden"><div class="modal-content" style="max-height: 80vh;"><h3 style="text-align: center; margin-bottom: 10px;">🔔 Thông báo</h3><div id="noti-list" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 50vh;"></div><div class="modal-actions"><button id="btn-close-noti" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
