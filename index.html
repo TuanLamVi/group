@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Nhóm & Quỹ</title>
+    <title>Quản Lý Quỹ Nhóm</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,23 +12,22 @@
         <div id="auth-screen" class="screen">
             <div class="card login-card">
                 <h2 id="auth-title">Đăng nhập</h2>
-                <div id="login-form">
-                    <input type="tel" id="login-phone" placeholder="Số điện thoại...">
-                    <input type="password" id="login-password" placeholder="Mật khẩu...">
-                    <button id="btn-login-submit" class="btn btn-primary btn-3d">Đăng nhập</button>
-                    <p style="margin-top: 15px; font-size: 14px;">
-                        Chưa có tài khoản? <a href="#" id="link-to-register" style="color: #007bff;">Đăng ký</a> | 
-                        <a href="#" id="link-forgot-pwd" style="color: #dc3545; font-weight: bold;">Quên mật khẩu?</a>
-                    </p>
-                </div>
+                <p>Quản lý quỹ nhóm minh bạch</p>
+                
                 <div id="register-form" class="hidden">
-                    <input type="text" id="reg-name" placeholder="Họ và tên...">
-                    <input type="tel" id="reg-phone" placeholder="Số điện thoại...">
-                    <input type="text" id="reg-address" placeholder="Địa chỉ thường trú...">
+                    <input type="text" id="reg-name" placeholder="Họ và tên..." autocomplete="off">
+                    <input type="tel" id="reg-phone" placeholder="Số điện thoại..." autocomplete="off">
+                    <input type="text" id="reg-address" placeholder="Địa chỉ thường trú..." autocomplete="off">
                     <input type="password" id="reg-password" placeholder="Mật khẩu (ít nhất 8 ký tự)...">
-                    <input type="number" id="reg-pin" placeholder="Mã PIN 4 số (bảo mật)..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
                     <button id="btn-register-submit" class="btn btn-success btn-3d">Đăng ký ngay</button>
                     <p style="margin-top: 15px; font-size: 14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color: #007bff;">Đăng nhập</a></p>
+                </div>
+
+                <div id="login-form">
+                    <input type="tel" id="login-phone" placeholder="Số điện thoại..." autocomplete="off">
+                    <input type="password" id="login-password" placeholder="Mật khẩu...">
+                    <button id="btn-login-submit" class="btn btn-primary btn-3d">Vào ứng dụng</button>
+                    <p style="margin-top: 15px; font-size: 14px;">Chưa có tài khoản? <a href="#" id="link-to-register" style="color: #007bff;">Đăng ký</a></p>
                 </div>
             </div>
         </div>
@@ -43,13 +42,15 @@
                         <p style="font-size: 13px; color: gray;" id="user-phone-display"></p>
                     </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <!-- TÁCH NÚT CÀI ĐẶT VÀ ĐĂNG XUẤT 2 BÊN -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; width: 100%;">
                     <button id="btn-edit-profile" class="btn-sm btn-secondary btn-3d" style="width: 48%;">⚙️ Cài đặt</button>
                     <button id="btn-logout" class="btn-sm btn-danger btn-3d" style="width: 48%;">Đăng xuất</button>
                 </div>
             </div>
+
             <div class="section-header">
-                <h2>Nhóm Của Tôi</h2>
+                <h2>Các Nhóm Của Tôi</h2>
                 <button id="btn-create-group" class="btn-sm btn-primary btn-3d">➕ Tạo nhóm</button>
             </div>
             <div id="group-list" class="group-list"></div>
@@ -57,51 +58,115 @@
 
         <!-- MÀN HÌNH 3: CHI TIẾT NHÓM -->
         <div id="main-screen" class="screen hidden">
-            <button id="btn-back-dashboard" class="btn-sm btn-secondary btn-3d" style="margin-bottom: 15px;">🔙 Trở về</button>
+            <button id="btn-back-dashboard" class="btn-sm btn-secondary btn-3d" style="margin-bottom: 15px; width: auto;">🔙 Trở về danh sách</button>
+            
             <div class="card balance-card">
-                <h3>Nhóm: <span id="group-name">...</span></h3>
+                <h3>Nhóm: <span id="group-name">Đang tải...</span></h3>
+                <p class="balance-title">Số dư quỹ chung</p>
                 <h1 class="balance-amount"><span id="balance">0</span> ₫</h1>
-                <p style="font-size: 12px; color: #ffd700;">Vai trò: <span id="user-role">...</span></p>
+                <p style="font-size: 12px; margin-top: 10px; color: #ffd700;">Vai trò: <span id="user-role">...</span></p>
             </div>
+
             <div class="action-buttons">
                 <button id="btn-income" class="btn btn-success btn-3d">➕ Thu tiền</button>
                 <button id="btn-expense" class="btn btn-danger btn-3d">➖ Chi tiền</button>
             </div>
-            
+
+            <div id="pending-section" class="recent-transactions hidden">
+                <h3 style="color: #dc3545;">⚠️ Đề xuất thu/chi chờ duyệt</h3>
+                <ul id="pending-list" class="transaction-list"></ul>
+            </div>
+
+            <div id="pending-members-section" class="campaign-section hidden">
+                <h3 style="color: #ff9800;">⚠️ Đề xuất thêm thành viên</h3>
+                <div id="pending-members-list" class="transaction-list" style="padding: 10px; background: #fff; border-radius: 8px;"></div>
+            </div>
+
             <div class="campaign-section">
-                <div class="section-header"><h3>Thành viên</h3><button id="btn-add-member" class="btn-sm btn-secondary btn-3d">➕ Mời</button></div>
-                <div style="position: relative; margin-bottom: 10px;"><input type="text" id="search-member-input" placeholder="🔍 Tìm tên hoặc SĐT..." style="padding-left: 35px;"></div>
-                <div id="member-list" class="transaction-list"></div>
-                <div id="pagination-controls" style="display: flex; justify-content: center; gap: 10px; align-items: center; margin-top: 10px;">
+                <div class="section-header">
+                    <h3>Quỹ Sự Kiện</h3>
+                    <button id="btn-create-campaign" class="btn-sm btn-primary btn-3d hidden">➕ Tạo</button>
+                </div>
+                <div id="campaign-list" class="campaign-list"></div>
+            </div>
+
+            <!-- KHU VỰC THÀNH VIÊN ĐƯỢC NÂNG CẤP -->
+            <div class="campaign-section">
+                <div class="section-header" style="margin-bottom: 10px;">
+                    <h3>Danh sách thành viên</h3>
+                    <button id="btn-add-member" class="btn-sm btn-secondary btn-3d">➕ Mời bạn</button>
+                </div>
+                <!-- THANH TÌM KIẾM CÓ KÍNH LÚP -->
+                <div style="position: relative; margin-bottom: 15px;">
+                    <span style="position: absolute; left: 12px; top: 12px; color: gray;">🔍</span>
+                    <input type="text" id="search-member-input" placeholder="Tìm tên hoặc SĐT..." style="width: 100%; padding: 10px 10px 10px 35px; border-radius: 8px; border: 1px solid #ccc; outline: none;">
+                </div>
+                
+                <div id="member-list" class="transaction-list" style="padding: 5px 10px; background: #fff; border-radius: 8px;"></div>
+                
+                <!-- ĐIỀU KHIỂN PHÂN TRANG -->
+                <div id="pagination-controls" style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; align-items: center;">
                     <button id="btn-prev-page" class="btn-sm btn-secondary btn-3d">◀</button>
-                    <span id="page-info">1/1</span>
+                    <span id="page-info" style="font-weight: bold; font-size: 14px;">1/1</span>
                     <button id="btn-next-page" class="btn-sm btn-secondary btn-3d">▶</button>
                 </div>
             </div>
-            <!-- Lịch sử và Quỹ sự kiện giữ nguyên -->
-            <div id="transaction-history" class="recent-transactions">
+
+            <div class="recent-transactions" style="margin-top: 20px;">
                 <h3>Lịch sử quỹ</h3>
                 <ul id="transaction-list" class="transaction-list"></ul>
             </div>
         </div>
     </div>
 
-    <!-- MODAL POPUP -->
-    <div id="forgot-password-modal" class="modal hidden">
+    <!-- MODAL GIAO DỊCH THU CHI -->
+    <div id="tx-modal" class="modal hidden">
         <div class="modal-content">
-            <h3>🔐 Khôi phục mật khẩu</h3>
-            <input type="tel" id="forgot-phone" placeholder="Số điện thoại...">
-            <input type="number" id="forgot-pin" placeholder="Mã PIN 4 số..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
-            <input type="password" id="forgot-new-password" placeholder="Mật khẩu mới...">
+            <h3 id="tx-modal-title">Thêm Giao Dịch</h3>
+            <input type="number" id="tx-amount" placeholder="Nhập số tiền (VNĐ)...">
+            <input type="text" id="tx-desc" placeholder="Mô tả...">
+            <label for="tx-campaign-select">Nguồn tiền:</label>
+            <select id="tx-campaign-select"><option value="">-- Quỹ chung của nhóm --</option></select>
             <div class="modal-actions">
-                <button id="btn-cancel-forgot" class="btn btn-secondary btn-3d">Hủy</button>
-                <button id="btn-submit-forgot" class="btn btn-primary btn-3d">Xác nhận</button>
+                <button id="btn-cancel-tx" class="btn btn-secondary btn-3d">Hủy</button>
+                <button id="btn-submit-tx" class="btn btn-success btn-3d">Xác nhận</button>
             </div>
         </div>
     </div>
-    <div id="custom-prompt-modal" class="modal hidden">
-        <div class="modal-content"><h3 id="prompt-title"></h3><input type="text" id="prompt-input"><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">OK</button></div></div>
+
+    <!-- MODAL CÀI ĐẶT -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 style="text-align: center; margin-bottom: 10px;">⚙️ Cài đặt</h3>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                <h4 style="margin-bottom: 10px; font-size: 14px; color: #007bff;">👤 Thông tin cá nhân</h4>
+                <input type="text" id="edit-profile-name" placeholder="Họ và tên...">
+                <input type="text" id="edit-profile-address" placeholder="Địa chỉ thường trú...">
+                <input type="text" id="edit-profile-avatar" placeholder="Link ảnh (để trống dùng mặc định)">
+                <button id="btn-submit-profile" class="btn btn-primary btn-3d" style="width: 100%; margin-top: 10px;">Lưu Thay Đổi</button>
+            </div>
+            <div id="settings-section-admin" class="hidden" style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 10px;">
+                <h4 style="margin-bottom: 10px; font-size: 14px; color: #856404;">👑 Quản trị nhóm</h4>
+                <div id="admin-actions-container" style="display: flex; gap: 10px;"></div>
+            </div>
+            <div class="modal-actions" style="margin-top: 5px;">
+                <button id="btn-cancel-settings" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button>
+            </div>
+        </div>
     </div>
+
+    <!-- POPUP CUSTOM THAY THẾ PROMPT MẶC ĐỊNH -->
+    <div id="custom-prompt-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="prompt-title">Nhập thông tin</h3>
+            <input type="text" id="prompt-input" placeholder="...">
+            <div class="modal-actions">
+                <button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button>
+                <button id="btn-prompt-submit" class="btn btn-primary btn-3d">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="app.js"></script>
 </body>
 </html>
