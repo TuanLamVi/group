@@ -31,6 +31,43 @@ let currentlyOpenMember = null; let cachedGroupMembersArray = []; let searchMemb
 const FB_EMOJIS = { '👍': { text: 'Thích', color: '#056BF0' }, '❤️': { text: 'Yêu thích', color: '#F33E58' }, '🥰': { text: 'Thương', color: '#F7B125' }, '😂': { text: 'Haha', color: '#F7B125' }, '😮': { text: 'Wow', color: '#F7B125' }, '😢': { text: 'Buồn', color: '#F7B125' }, '😡': { text: 'Phẫn nộ', color: '#E9710F' } };
 const userCache = {};
 
+// ================= TÍNH NĂNG MỚI: CHUẨN HÓA SĐT =================
+function normalizePhone(phone) {
+    if (!phone) return "";
+    let p = phone.replace(/[^0-9+]/g, ""); // Xóa khoảng trắng, dấu trừ, dấu chấm...
+    if (p.startsWith('+84')) p = '0' + p.slice(3);
+    else if (p.startsWith('84') && p.length > 9) p = '0' + p.slice(2);
+    return p;
+}
+
+// ================= TÍNH NĂNG MỚI: TOAST MESSAGE (THAY THẾ ALERT) =================
+window.showToast = (msg, type = "success") => {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    toast.innerHTML = `<span style="font-size:18px;">${icon}</span> <span>${msg}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
+};
+
+// ================= TÍNH NĂNG MỚI: MODAL XÁC NHẬN (THAY THẾ CONFIRM) =================
+window.customConfirm = (msg) => {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-confirm-modal');
+        document.getElementById('confirm-msg').innerText = msg;
+        modal.classList.remove('hidden');
+        const btnYes = document.getElementById('btn-confirm-yes');
+        const btnNo = document.getElementById('btn-confirm-no');
+        const cleanup = () => { modal.classList.add('hidden'); btnYes.onclick = null; btnNo.onclick = null; };
+        btnYes.onclick = () => { cleanup(); resolve(true); };
+        btnNo.onclick = () => { cleanup(); resolve(false); };
+    });
+};
+
 async function getUsersData(phoneArray) {
     const result = {};
     for (const phone of phoneArray) {
@@ -60,15 +97,73 @@ window.customPrompt = function(title, description, placeholder) {
     });
 }
 
-// ================= XÁC THỰC =================
-document.getElementById('link-to-register').addEventListener('click', () => { document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('auth-title').innerText = "Đăng ký tài khoản"; });
-document.getElementById('link-to-login').addEventListener('click', () => { document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('auth-title').innerText = "Đăng nhập"; });
-document.getElementById('btn-register-submit').addEventListener('click', async () => { const name = document.getElementById('reg-name').value.trim(); const phone = document.getElementById('reg-phone').value.trim(); const address = document.getElementById('reg-address').value.trim(); const password = document.getElementById('reg-password').value.trim(); if (!name || phone.length < 9 || password.length < 8) return alert("Nhập đủ thông tin!"); try { const userRef = doc(db, "users", phone); if ((await getDoc(userRef)).exists()) return alert("SĐT đã ký!"); await setDoc(userRef, { name, phone, address, password, avatar: "", createdAt: serverTimestamp() }); alert("Đăng ký thành công!"); document.getElementById('link-to-login').click(); } catch (e) { alert("Lỗi: " + e.message); } });
-document.getElementById('btn-login-submit').addEventListener('click', async () => { const phone = document.getElementById('login-phone').value.trim(); const password = document.getElementById('login-password').value.trim(); if (!phone || !password) return alert("Nhập SĐT và mật khẩu!"); try { const snap = await getDoc(doc(db, "users", phone)); if (!snap.exists() || snap.data().password !== password) return alert("Sai SĐT hoặc mật khẩu!"); loginSuccess(phone); } catch (e) { alert("Lỗi: " + e.message); } });
+// ================= XÁC THỰC (ĐĂNG KÝ, ĐĂNG NHẬP, QUÊN MẬT KHẨU) =================
+const loginForm = document.getElementById('login-form');
+const regForm = document.getElementById('register-form');
+const forgotForm = document.getElementById('forgot-form');
+const authTitle = document.getElementById('auth-title');
+
+document.getElementById('link-to-register').addEventListener('click', () => { loginForm.classList.add('hidden'); forgotForm.classList.add('hidden'); regForm.classList.remove('hidden'); authTitle.innerText = "Đăng ký tài khoản"; });
+document.getElementById('link-to-login').addEventListener('click', () => { regForm.classList.add('hidden'); forgotForm.classList.add('hidden'); loginForm.classList.remove('hidden'); authTitle.innerText = "Đăng nhập"; });
+document.getElementById('link-to-forgot').addEventListener('click', () => { loginForm.classList.add('hidden'); regForm.classList.add('hidden'); forgotForm.classList.remove('hidden'); authTitle.innerText = "Khôi phục mật khẩu"; });
+document.getElementById('link-forgot-to-login').addEventListener('click', () => { forgotForm.classList.add('hidden'); loginForm.classList.remove('hidden'); authTitle.innerText = "Đăng nhập"; });
+
+// ĐĂNG KÝ (Có lưu mã PIN)
+document.getElementById('btn-register-submit').addEventListener('click', async () => { 
+    const name = document.getElementById('reg-name').value.trim(); 
+    const phone = normalizePhone(document.getElementById('reg-phone').value.trim()); 
+    const address = document.getElementById('reg-address').value.trim(); 
+    const password = document.getElementById('reg-password').value.trim(); 
+    const pin = document.getElementById('reg-pin').value.trim();
+
+    if (!name || phone.length < 9 || password.length < 8 || pin.length < 4) return window.showToast("Nhập đủ thông tin (Mật khẩu > 8, PIN > 4 số)!", "error"); 
+    try { 
+        const userRef = doc(db, "users", phone); 
+        if ((await getDoc(userRef)).exists()) return window.showToast("SĐT đã được đăng ký!", "error"); 
+        await setDoc(userRef, { name, phone, address, password, pin, avatar: "", createdAt: serverTimestamp() }); 
+        window.showToast("Đăng ký thành công!", "success"); 
+        document.getElementById('link-to-login').click(); 
+    } catch (e) { window.showToast("Lỗi: " + e.message, "error"); } 
+});
+
+// ĐĂNG NHẬP
+document.getElementById('btn-login-submit').addEventListener('click', async () => { 
+    const phone = normalizePhone(document.getElementById('login-phone').value.trim()); 
+    const password = document.getElementById('login-password').value.trim(); 
+    if (!phone || !password) return window.showToast("Nhập SĐT và mật khẩu!", "error"); 
+    try { 
+        const snap = await getDoc(doc(db, "users", phone)); 
+        if (!snap.exists() || snap.data().password !== password) return window.showToast("Sai SĐT hoặc mật khẩu!", "error"); 
+        loginSuccess(phone); 
+    } catch (e) { window.showToast("Lỗi: " + e.message, "error"); } 
+});
+
+// QUÊN MẬT KHẨU
+document.getElementById('btn-forgot-submit').addEventListener('click', async () => {
+    const phone = normalizePhone(document.getElementById('forgot-phone').value.trim());
+    const pin = document.getElementById('forgot-pin').value.trim();
+    const newPassword = document.getElementById('forgot-new-password').value.trim();
+    if (!phone || !pin || newPassword.length < 8) return window.showToast("Nhập SĐT, mã PIN và mật khẩu mới (>8 ký tự)!", "error");
+
+    try {
+        const userRef = doc(db, "users", phone);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) return window.showToast("SĐT không tồn tại!", "error");
+        
+        const userData = snap.data();
+        if (userData.pin !== pin) return window.showToast("Mã PIN bảo mật không chính xác!", "error");
+        
+        await updateDoc(userRef, { password: newPassword });
+        window.showToast("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.", "success");
+        document.getElementById('link-forgot-to-login').click();
+    } catch (e) { window.showToast("Lỗi: " + e.message, "error"); }
+});
+
 window.addEventListener('DOMContentLoaded', () => { const savedPhone = localStorage.getItem('userPhone'); if (savedPhone) loginSuccess(savedPhone); });
 
 function loginSuccess(phone) {
     localStorage.setItem('userPhone', phone); authScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden');
+    window.showToast("Đăng nhập thành công!", "success");
     if(unsubUser) unsubUser();
     unsubUser = onSnapshot(doc(db, "users", phone), (docSnap) => { if(docSnap.exists()) { currentUser = docSnap.data(); userCache[currentUser.phone] = currentUser; document.getElementById('user-avatar').src = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=random&color=fff`; document.getElementById('user-name-display').innerText = currentUser.name; document.getElementById('user-phone-display').innerText = currentUser.phone; } });
     if(unsubNoti) unsubNoti();
@@ -79,7 +174,14 @@ function loginSuccess(phone) {
     });
     loadUserGroups(phone); 
 }
-document.getElementById('btn-logout').addEventListener('click', () => { if (!confirm("Đăng xuất?")) return; localStorage.removeItem('userPhone'); currentUser = null; currentGroupId = null; if(unsubUser) unsubUser(); if(unsubGroups) unsubGroups(); if(unsubGroup) unsubGroup(); if(unsubAnno) unsubAnno(); if(unsubNoti) unsubNoti(); if(unsubTx) unsubTx(); if(unsubCampaigns) unsubCampaigns(); dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); });
+
+document.getElementById('btn-logout').addEventListener('click', async () => { 
+    if (!(await window.customConfirm("Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?"))) return; 
+    localStorage.removeItem('userPhone'); currentUser = null; currentGroupId = null; 
+    if(unsubUser) unsubUser(); if(unsubGroups) unsubGroups(); if(unsubGroup) unsubGroup(); if(unsubAnno) unsubAnno(); if(unsubNoti) unsubNoti(); if(unsubTx) unsubTx(); if(unsubCampaigns) unsubCampaigns(); 
+    dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); 
+    window.showToast("Đã đăng xuất!", "info");
+});
 
 // ================= TƯƠNG TÁC FACEBOOK (DÙNG CHUNG) =================
 function renderInteractionsHTML(docId, data, isAnno = false) {
@@ -105,7 +207,7 @@ function renderInteractionsHTML(docId, data, isAnno = false) {
 }
 window.toggleComments = (id) => { const el = document.getElementById(`comments-${id}`); if(el) el.classList.toggle('hidden'); };
 
-// ================= BẢNG TIN (ANNOUNCEMENTS) KIỂU BÀI BÁO =================
+// ================= BẢNG TIN (ANNOUNCEMENTS) CÓ TƯƠNG TÁC =================
 function isAnnoRead(id) { const readList = JSON.parse(localStorage.getItem(`readAnnos_${currentUser.phone}`) || '[]'); return readList.includes(id); }
 function markAnnoRead(id) { const readList = JSON.parse(localStorage.getItem(`readAnnos_${currentUser.phone}`) || '[]'); if (!readList.includes(id)) { readList.push(id); localStorage.setItem(`readAnnos_${currentUser.phone}`, JSON.stringify(readList)); } }
 
@@ -116,31 +218,25 @@ document.getElementById('btn-open-anno-modal').addEventListener('click', () => {
 });
 document.getElementById('btn-cancel-anno').addEventListener('click', () => annoModal.classList.add('hidden'));
 
-// SỰ KIỆN GỬI BẢN TIN (ĐÃ FIX LỖI)
 document.getElementById('btn-submit-anno').addEventListener('click', async () => {
     const title = document.getElementById('anno-title-input').value.trim(); const content = document.getElementById('anno-content-input').value.trim(); const id = document.getElementById('anno-id').value;
-    if(!title || !content) return alert("Vui lòng nhập đủ Tiêu đề và Nội dung!");
+    if(!title || !content) return window.showToast("Vui lòng nhập đủ Tiêu đề và Nội dung!", "error");
     try {
         if(id) { 
             await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { title, content }); 
+            window.showToast("Cập nhật bản tin thành công!", "success");
         } else { 
-            // Lưu bản tin mới
             const newAnnoRef = await addDoc(collection(db, "groups", currentGroupId, "announcements"), { title, content, createdBy: currentUser.name, creatorPhone: currentUser.phone, reactions: {}, comments: [], createdAt: serverTimestamp() }); 
-            
-            // LƯU ID BẢN TIN VÀO NHÓM ĐỂ KÍCH HOẠT NHÃN "🔴 TIN MỚI" NGOÀI TRANG CHỦ
             await updateDoc(doc(db, "groups", currentGroupId), { lastAnnoId: newAnnoRef.id });
-            
-            // GỬI THÔNG BÁO VÀO QUẢ CHUÔNG CHO TẤT CẢ THÀNH VIÊN
             if (currentGroupData && currentGroupData.members) {
                 currentGroupData.members.forEach(memberPhone => {
-                    if (memberPhone !== currentUser.phone) {
-                        sendNotification(memberPhone, "📢 Bảng tin mới", `Nhóm ${currentGroupData.name} vừa có thông báo: ${title}`, currentGroupId);
-                    }
+                    if (memberPhone !== currentUser.phone) { sendNotification(memberPhone, "📢 Bảng tin mới", `Nhóm ${currentGroupData.name} vừa có thông báo: ${title}`, currentGroupId); }
                 });
             }
+            window.showToast("Đã đăng bản tin mới!", "success");
         }
         annoModal.classList.add('hidden'); viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;
-    } catch(e) { alert("Lỗi: " + e.message); }
+    } catch(e) { window.showToast("Lỗi: " + e.message, "error"); }
 });
 
 window.editAnno = (id, title, content) => {
@@ -148,7 +244,13 @@ window.editAnno = (id, title, content) => {
     document.getElementById('anno-modal-title').innerText = "✏️ Sửa Bản Tin";
     annoModal.classList.remove('hidden');
 };
-window.deleteAnno = async (id) => { if(confirm("Xóa bài viết này?")) { await deleteDoc(doc(db, "groups", currentGroupId, "announcements", id)); viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;} };
+window.deleteAnno = async (id) => { 
+    if(await window.customConfirm("Bạn có chắc chắn muốn xóa bài viết này không?")) { 
+        await deleteDoc(doc(db, "groups", currentGroupId, "announcements", id)); 
+        viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;
+        window.showToast("Đã xóa bài viết!", "info");
+    } 
+};
 
 window.reactToAnno = async (id, emoji) => { try { const ref = doc(db, "groups", currentGroupId, "announcements", id); const data = (await getDoc(ref)).data(); const reactions = data.reactions || {}; if (reactions[currentUser.phone] === emoji) delete reactions[currentUser.phone]; else reactions[currentUser.phone] = emoji; await updateDoc(ref, { reactions }); } catch(e){} };
 window.submitAnnoComment = async (id) => { const inp = document.getElementById(`input-cmt-${id}`); const txt = inp.value.trim(); if(!txt) return; try { await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { comments: arrayUnion({ phone: currentUser.phone, name: currentUser.name, text: txt, time: Date.now() }) }); inp.value = ''; } catch(e){} };
@@ -192,29 +294,27 @@ function loadUserGroups(phone) {
     unsubGroups = onSnapshot(query(collection(db, "groups"), where("members", "array-contains", phone)), (snapshot) => { 
         const list = document.getElementById('group-list'); list.innerHTML = ''; 
         if(snapshot.empty) return list.innerHTML = '<p style="text-align:center; color:gray;">Chưa tham gia nhóm nào.</p>';
-        
-        // Đọc danh sách ID bản tin đã xem
         const readList = JSON.parse(localStorage.getItem(`readAnnos_${phone}`) || '[]');
         
         snapshot.forEach((docSnap) => { 
             const data = docSnap.data(); 
             let roleHtml = (data.ownerId === phone) ? '<span class="role-badge role-owner">👑 Trưởng nhóm</span>' : (data.deputies && data.deputies.includes(phone)) ? '<span class="role-badge role-deputy">⭐ Phó nhóm</span>' : '<span class="role-badge role-member">👥 Thành viên</span>'; 
-            
-            // Nếu có lastAnnoId và người dùng chưa lưu vào readList -> Hiện nhãn đỏ
             let badgeNewHtml = (data.lastAnnoId && !readList.includes(data.lastAnnoId)) ? `<span class="group-badge-new">🔴 Tin mới</span>` : '';
-            
             list.innerHTML += `<div class="group-item-card" onclick="window.enterGroup('${docSnap.id}')">${badgeNewHtml}<div class="group-item-name">${data.name}</div>${roleHtml}<div class="group-item-balance">Số dư: <b>${(data.balance || 0).toLocaleString()} ₫</b></div></div>`; 
         }); 
     }); 
 }
-document.getElementById('btn-create-group').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Nhóm", "", "Tên nhóm..."); if (!name) return; await addDoc(collection(db, "groups"), { name, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); });
+document.getElementById('btn-create-group').addEventListener('click', async () => { 
+    const name = await window.customPrompt("Tạo Nhóm", "", "Tên nhóm..."); 
+    if (!name) return; 
+    await addDoc(collection(db, "groups"), { name, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); 
+    window.showToast("Tạo nhóm thành công!", "success");
+});
 window.enterGroup = (groupId) => { currentGroupId = groupId; dashboardScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); initRealtimeListeners(); };
 document.getElementById('btn-back-dashboard').addEventListener('click', () => { 
     if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); if(unsubAnno) unsubAnno(); 
     currentGroupId = null; currentGroupData = null; 
     mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden'); 
-    
-    // Khởi chạy lại để ẩn nhãn đỏ ngay lập tức nếu vừa đọc xong
     loadUserGroups(currentUser.phone);
 });
 
@@ -223,6 +323,7 @@ document.getElementById('btn-edit-group-name').addEventListener('click', async (
     if (newName && newName !== currentGroupData.name) {
         await updateDoc(doc(db, "groups", currentGroupId), { name: newName });
         sendNotification(currentGroupData.ownerId, "Đổi tên nhóm", `${currentUser.name} đã đổi tên nhóm thành: ${newName}`, currentGroupId);
+        window.showToast("Đã lưu tên nhóm mới!", "success");
     }
 });
 
@@ -231,10 +332,11 @@ document.getElementById('btn-edit-profile').addEventListener('click', () => { wi
 document.getElementById('btn-cancel-settings').addEventListener('click', () => settingsModal.classList.add('hidden'));
 
 window.proposeOwnership = async (targetPhone) => {
-    if (!confirm(`Bạn muốn nhường chức Trưởng nhóm cho ${targetPhone}? Họ phải Đồng ý thì quyền mới được chuyển giao.`)) return;
+    if (!(await window.customConfirm(`Bạn muốn nhường chức Trưởng nhóm cho ${targetPhone}? Họ phải Đồng ý thì quyền mới được chuyển giao.`))) return;
     await updateDoc(doc(db, "groups", currentGroupId), { pendingOwner: targetPhone });
     sendNotification(targetPhone, "👑 Đề xuất Trưởng nhóm", `${currentUser.name} muốn nhường chức Trưởng nhóm cho bạn. Vui lòng vào nhóm để xác nhận.`, currentGroupId);
-    document.getElementById('settings-modal').classList.add('hidden'); alert("Đã gửi lời mời nhường chức!");
+    document.getElementById('settings-modal').classList.add('hidden'); 
+    window.showToast("Đã gửi lời mời nhường chức!", "success");
 };
 
 window.handleOwnership = async (isAccept) => {
@@ -242,10 +344,11 @@ window.handleOwnership = async (isAccept) => {
     if (isAccept) {
         await updateDoc(groupRef, { ownerId: currentUser.phone, deputies: arrayRemove(currentUser.phone), pendingOwner: null });
         sendNotification(oldOwner, "✅ Chuyển quyền thành công", `${currentUser.name} đã đồng ý làm Trưởng nhóm mới.`, currentGroupId);
-        alert("Bạn đã trở thành Trưởng nhóm!");
+        window.showToast("Bạn đã trở thành Trưởng nhóm!", "success");
     } else {
         await updateDoc(groupRef, { pendingOwner: null });
         sendNotification(oldOwner, "❌ Từ chối nhận quyền", `${currentUser.name} đã từ chối nhận chức Trưởng nhóm.`, currentGroupId);
+        window.showToast("Đã từ chối nhận quyền.", "info");
     }
 };
 
@@ -270,9 +373,9 @@ window.openSettings = async (targetPhone) => {
     }
     settingsModal.classList.remove('hidden');
 };
-document.getElementById('btn-submit-profile').addEventListener('click', async () => { const newName = document.getElementById('edit-profile-name').value.trim(); const newAddress = document.getElementById('edit-profile-address').value.trim(); const newAvatar = document.getElementById('edit-profile-avatar').value.trim(); if(!newName) return alert("Tên không để trống!"); try { await updateDoc(doc(db, "users", currentUser.phone), { name: newName, address: newAddress, avatar: newAvatar }); userCache[currentUser.phone] = { ...currentUser, name: newName, address: newAddress, avatar: newAvatar }; settingsModal.classList.add('hidden'); alert("Đã lưu!"); } catch(e){} });
+document.getElementById('btn-submit-profile').addEventListener('click', async () => { const newName = document.getElementById('edit-profile-name').value.trim(); const newAddress = document.getElementById('edit-profile-address').value.trim(); const newAvatar = document.getElementById('edit-profile-avatar').value.trim(); if(!newName) return window.showToast("Tên không để trống!", "error"); try { await updateDoc(doc(db, "users", currentUser.phone), { name: newName, address: newAddress, avatar: newAvatar }); userCache[currentUser.phone] = { ...currentUser, name: newName, address: newAddress, avatar: newAvatar }; settingsModal.classList.add('hidden'); window.showToast("Đã lưu thông tin!", "success"); } catch(e){} });
 
-// ================= BẢNG YÊU CẦU XỬ LÝ (THÊM YÊU CẦU NHƯỜNG CHỨC) =================
+// ================= BẢNG YÊU CẦU XỬ LÝ =================
 async function renderUnifiedPendingList() {
     const sec = document.getElementById('unified-pending-section'); const listDiv = document.getElementById('unified-pending-list');
     let all = [...pendingMembersArr, ...pendingTxArr];
@@ -342,7 +445,10 @@ document.getElementById('btn-tx-next-page').addEventListener('click', () => { cu
 function initRealtimeListeners() {
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), async (snap) => {
         if (!snap.exists()) return; currentGroupData = snap.data();
-        if (!currentGroupData.members.includes(currentUser.phone)) { alert("Bạn đã bị xóa khỏi nhóm!"); document.getElementById('btn-back-dashboard').click(); return; }
+        if (!currentGroupData.members.includes(currentUser.phone)) { 
+            window.showToast("Bạn đã bị xóa khỏi nhóm!", "error"); 
+            document.getElementById('btn-back-dashboard').click(); return; 
+        }
         document.getElementById('group-name').innerText = currentGroupData.name; document.getElementById('balance').innerText = (currentGroupData.balance || 0).toLocaleString();
         userRole = (currentGroupData.ownerId === currentUser.phone) ? 'owner' : (currentGroupData.deputies && currentGroupData.deputies.includes(currentUser.phone)) ? 'deputy' : 'member';
         document.getElementById('user-role').innerHTML = `<span class="role-badge role-${userRole}">${userRole==='owner'?'Trưởng':userRole==='deputy'?'Phó':'Thành viên'}</span>`;
@@ -379,18 +485,18 @@ function initRealtimeListeners() {
 window.viewUserProfile = async (phone, inviterName) => { const dataObj = await getUsersData([phone]); const user = dataObj[phone]; document.getElementById('view-profile-avatar').src = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff`; document.getElementById('view-profile-name').innerText = user.name; document.getElementById('view-profile-phone').innerText = user.phone; document.getElementById('view-profile-address').innerText = user.address || 'Chưa cập nhật'; document.getElementById('view-profile-inviter').innerText = inviterName; viewProfileModal.classList.remove('hidden'); };
 document.getElementById('btn-close-view-profile').addEventListener('click', () => viewProfileModal.classList.add('hidden'));
 
-document.getElementById('btn-add-member').addEventListener('click', async () => { const newPhone = await window.customPrompt("Mời Thành Viên", "", "Nhập SĐT cần mời..."); if (!newPhone || newPhone.length < 9) return; const userSnap = await getDoc(doc(db, "users", newPhone)); if(!userSnap.exists()) return alert("SĐT này chưa đăng ký app!"); try { const groupRef = doc(db, "groups", currentGroupId); const groupData = (await getDoc(groupRef)).data(); const currentInvites = groupData.pendingInvites || []; const newInvites = currentInvites.filter(inv => inv.phone !== newPhone); if (isManager) { await updateDoc(groupRef, { members: arrayUnion(newPhone), pendingInvites: newInvites }); sendNotification(newPhone, "Bạn đã được thêm", `Vào nhóm ${groupData.name}`, currentGroupId); } else { newInvites.push({ phone: newPhone, proposedBy: currentUser.phone }); await updateDoc(groupRef, { pendingInvites: newInvites }); alert("Đã gửi đề xuất!"); const managers = [groupData.ownerId, ...(groupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất TV", `${currentUser.name} mời SĐT ${newPhone}`, currentGroupId)); } } catch(e){} });
-window.approveMember = async (phone, invPhone, isApprove) => { const invites = (currentGroupData.pendingInvites || []).filter(i => i.phone !== phone); if (isApprove) { await updateDoc(doc(db, "groups", currentGroupId), { members: arrayUnion(phone), pendingInvites: invites }); sendNotification(phone, "Đã vào nhóm", `Bạn đã được duyệt vào nhóm`, currentGroupId); } else { const reason = await window.customPrompt("Từ chối thành viên", `Gửi phản hồi cho người mời`, "Nhập lý do tại đây..."); if (reason === null) return; await updateDoc(doc(db, "groups", currentGroupId), { pendingInvites: invites }); sendNotification(invPhone, "Đề xuất bị từ chối", `Người bạn mời (${phone}) bị từ chối. Lý do: ${reason}`, currentGroupId); } };
+document.getElementById('btn-add-member').addEventListener('click', async () => { const newPhoneRaw = await window.customPrompt("Mời Thành Viên", "", "Nhập SĐT cần mời..."); if (!newPhoneRaw) return; const newPhone = normalizePhone(newPhoneRaw); if (newPhone.length < 9) return window.showToast("SĐT không hợp lệ!", "error"); const userSnap = await getDoc(doc(db, "users", newPhone)); if(!userSnap.exists()) return window.showToast("SĐT này chưa đăng ký app!", "error"); try { const groupRef = doc(db, "groups", currentGroupId); const groupData = (await getDoc(groupRef)).data(); const currentInvites = groupData.pendingInvites || []; const newInvites = currentInvites.filter(inv => inv.phone !== newPhone); if (isManager) { await updateDoc(groupRef, { members: arrayUnion(newPhone), pendingInvites: newInvites }); sendNotification(newPhone, "Bạn đã được thêm", `Vào nhóm ${groupData.name}`, currentGroupId); window.showToast("Đã thêm thành viên!", "success"); } else { newInvites.push({ phone: newPhone, proposedBy: currentUser.phone }); await updateDoc(groupRef, { pendingInvites: newInvites }); window.showToast("Đã gửi đề xuất!", "success"); const managers = [groupData.ownerId, ...(groupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất TV", `${currentUser.name} mời SĐT ${newPhone}`, currentGroupId)); } } catch(e){} });
+window.approveMember = async (phone, invPhone, isApprove) => { const invites = (currentGroupData.pendingInvites || []).filter(i => i.phone !== phone); if (isApprove) { await updateDoc(doc(db, "groups", currentGroupId), { members: arrayUnion(phone), pendingInvites: invites }); sendNotification(phone, "Đã vào nhóm", `Bạn đã được duyệt vào nhóm`, currentGroupId); window.showToast("Đã duyệt thành viên!", "success");} else { const reason = await window.customPrompt("Từ chối thành viên", `Gửi phản hồi cho người mời`, "Nhập lý do tại đây..."); if (reason === null) return; await updateDoc(doc(db, "groups", currentGroupId), { pendingInvites: invites }); sendNotification(invPhone, "Đề xuất bị từ chối", `Người bạn mời (${phone}) bị từ chối. Lý do: ${reason}`, currentGroupId); window.showToast("Đã từ chối đề xuất.", "info");} };
 
-window.reviewTx = async (txId, isApprove) => { const txRef = doc(db, "groups", currentGroupId, "transactions", txId); const txData = (await getDoc(txRef)).data(); if (isApprove) { await runTransaction(db, async (t) => { const change = txData.type === "expense" ? -txData.amount : txData.amount; const target = txData.campaignId ? doc(db, "groups", currentGroupId, "campaigns", txData.campaignId) : doc(db, "groups", currentGroupId); t.update(target, { balance: increment(change) }); t.update(txRef, { status: "approved" }); }); sendNotification(txData.creatorPhone, "Đề xuất được duyệt", `Khoản ${txData.description} đã duyệt!`, currentGroupId); } else { const reason = await window.customPrompt("Từ chối giao dịch", `Gửi phản hồi cho ${txData.createdByName}`, "Nhập lý do tại đây..."); if (reason === null) return; await deleteDoc(txRef); sendNotification(txData.creatorPhone, "Đề xuất bị từ chối", `Khoản ${txData.description} bị từ chối. Lý do: ${reason}`, currentGroupId); } };
+window.reviewTx = async (txId, isApprove) => { const txRef = doc(db, "groups", currentGroupId, "transactions", txId); const txData = (await getDoc(txRef)).data(); if (isApprove) { await runTransaction(db, async (t) => { const change = txData.type === "expense" ? -txData.amount : txData.amount; const target = txData.campaignId ? doc(db, "groups", currentGroupId, "campaigns", txData.campaignId) : doc(db, "groups", currentGroupId); t.update(target, { balance: increment(change) }); t.update(txRef, { status: "approved" }); }); sendNotification(txData.creatorPhone, "Đề xuất được duyệt", `Khoản ${txData.description} đã duyệt!`, currentGroupId); window.showToast("Đã duyệt giao dịch!", "success");} else { const reason = await window.customPrompt("Từ chối giao dịch", `Gửi phản hồi cho ${txData.createdByName}`, "Nhập lý do tại đây..."); if (reason === null) return; await deleteDoc(txRef); sendNotification(txData.creatorPhone, "Đề xuất bị từ chối", `Khoản ${txData.description} bị từ chối. Lý do: ${reason}`, currentGroupId); window.showToast("Đã hủy giao dịch.", "info");} };
 
 document.getElementById('btn-open-filter').addEventListener('click', () => { const memberSelect = document.getElementById('filter-member'); memberSelect.innerHTML = '<option value="all">Mọi thành viên</option>'; cachedGroupMembersArray.forEach(u => { memberSelect.innerHTML += `<option value="${u.phone}">${u.name} (${u.phone})</option>`; }); document.getElementById('filter-type').value = 'all'; document.getElementById('filter-member').value = 'all'; document.getElementById('filter-modal').classList.remove('hidden'); applyFilter(); });
 document.getElementById('btn-close-filter').addEventListener('click', () => { document.getElementById('filter-modal').classList.add('hidden'); }); document.getElementById('filter-type').addEventListener('change', applyFilter); document.getElementById('filter-member').addEventListener('change', applyFilter);
 function applyFilter() { const type = document.getElementById('filter-type').value; const memberPhone = document.getElementById('filter-member').value; let filtered = cachedTransactions.filter(tx => tx.status === 'approved'); if (type !== 'all') filtered = filtered.filter(tx => tx.type === type); if (memberPhone !== 'all') filtered = filtered.filter(tx => tx.creatorPhone === memberPhone); const resultsList = document.getElementById('filter-results-list'); resultsList.innerHTML = ''; let totalAmount = 0; if (filtered.length === 0) { resultsList.innerHTML = '<p style="text-align:center; color:gray; padding:10px;">Không có giao dịch phù hợp.</p>'; } else { filtered.forEach(tx => { const symbol = tx.type === 'income' ? '+' : '-'; const color = tx.type === 'income' ? '#10B981' : '#EF4444'; if (type === 'all') totalAmount += (tx.type === 'income' ? tx.amount : -tx.amount); else totalAmount += tx.amount; resultsList.innerHTML += `<li class="transaction-item"><div class="tx-top"><div class="tx-info"><span class="tx-desc">${tx.description}</span><span style="font-size: 12px; color: gray;">Bởi: ${tx.createdByName}</span></div><strong style="color: ${color};">${symbol}${tx.amount.toLocaleString()} ₫</strong></div></li>`; }); } const totalEl = document.getElementById('filter-total-amount'); totalEl.innerText = Math.abs(totalAmount).toLocaleString(); if (type === 'all') totalEl.style.color = totalAmount >= 0 ? '#10B981' : '#EF4444'; else if (type === 'income') totalEl.style.color = '#10B981'; else totalEl.style.color = '#EF4444'; }
 
-window.toggleDeputy = async (phone, isCurrentlyDeputy) => { if (userRole !== 'owner') return; try { await updateDoc(doc(db, "groups", currentGroupId), { deputies: isCurrentlyDeputy ? arrayRemove(phone) : arrayUnion(phone) }); sendNotification(phone, "Quyền hạn", `Bạn vừa được ${isCurrentlyDeputy?'giáng cấp':'lên Phó nhóm'}`, currentGroupId); } catch (e){} };
-window.removeMember = async (phone) => { if (userRole !== 'owner') return; if (!confirm(`Xóa ${phone}?`)) return; try { await updateDoc(doc(db, "groups", currentGroupId), { members: arrayRemove(phone), deputies: arrayRemove(phone) }); sendNotification(phone, "Bị xóa khỏi nhóm", `Bạn bị xóa khỏi ${currentGroupData.name}`, null); } catch (e){} };
+window.toggleDeputy = async (phone, isCurrentlyDeputy) => { if (userRole !== 'owner') return; try { await updateDoc(doc(db, "groups", currentGroupId), { deputies: isCurrentlyDeputy ? arrayRemove(phone) : arrayUnion(phone) }); sendNotification(phone, "Quyền hạn", `Bạn vừa được ${isCurrentlyDeputy?'giáng cấp':'lên Phó nhóm'}`, currentGroupId); window.showToast("Đã phân quyền thành công!", "success");} catch (e){} };
+window.removeMember = async (phone) => { if (userRole !== 'owner') return; if (!(await window.customConfirm(`Xác nhận đuổi thành viên này khỏi nhóm?`))) return; try { await updateDoc(doc(db, "groups", currentGroupId), { members: arrayRemove(phone), deputies: arrayRemove(phone) }); sendNotification(phone, "Bị xóa khỏi nhóm", `Bạn bị xóa khỏi ${currentGroupData.name}`, null); window.showToast("Đã xóa thành viên!", "info");} catch (e){} };
 document.getElementById('btn-income').addEventListener('click', () => { txType = "income"; txModal.classList.remove('hidden'); }); document.getElementById('btn-expense').addEventListener('click', () => { txType = "expense"; txModal.classList.remove('hidden'); }); document.getElementById('btn-cancel-tx').addEventListener('click', () => txModal.classList.add('hidden'));
-document.getElementById('btn-submit-tx').addEventListener('click', async () => { let amount = parseInt(document.getElementById('tx-amount').value); const desc = document.getElementById('tx-desc').value; const campaignId = document.getElementById('tx-campaign-select').value; if (!amount || amount <= 0 || !desc) return alert("Nhập đầy đủ!"); const changeAmount = txType === "expense" ? -amount : amount; const txStatus = isManager ? "approved" : "pending"; try { if (isManager) { const targetRef = campaignId ? doc(db, "groups", currentGroupId, "campaigns", campaignId) : doc(db, "groups", currentGroupId); await updateDoc(targetRef, { balance: increment(changeAmount) }); } await addDoc(collection(db, "groups", currentGroupId, "transactions"), { type: txType, amount: amount, description: desc, campaignId: campaignId || null, creatorPhone: currentUser.phone, createdByName: currentUser.name, status: txStatus, reactions: {}, comments: [], createdAt: serverTimestamp() }); txModal.classList.add('hidden'); document.getElementById('tx-amount').value = ''; document.getElementById('tx-desc').value = ''; if (!isManager) { alert("Đã gửi đề xuất duyệt!"); const managers = [currentGroupData.ownerId, ...(currentGroupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất giao dịch", `${currentUser.name} đề xuất ${txType==='income'?'THU':'CHI'} ${amount.toLocaleString()}đ`, currentGroupId)); } } catch (e) { alert("Lỗi: " + e.message); } });
-document.getElementById('btn-create-campaign').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Quỹ Sự Kiện", "", "Tên sự kiện mới..."); if (!name) return; try { await addDoc(collection(db, "groups", currentGroupId, "campaigns"), { name: name, status: "active", balance: 0, createdAt: serverTimestamp() }); } catch (e){} });
-window.closeCampaign = async (campaignId, campaignName) => { if (!confirm(`Tất toán "${campaignName}"?`)) return; const groupRef = doc(db, "groups", currentGroupId); const campaignRef = doc(db, "groups", currentGroupId, "campaigns", campaignId); try { await runTransaction(db, async (t) => { const gDoc = await t.get(groupRef); const cDoc = await t.get(campaignRef); const cBal = cDoc.data().balance; t.update(groupRef, { balance: (gDoc.data().balance || 0) + cBal }); t.update(campaignRef, { balance: 0, status: "closed" }); t.set(doc(collection(db, "groups", currentGroupId, "transactions")), { type: cBal >= 0 ? "income" : "expense", amount: Math.abs(cBal), description: `Tất toán: ${campaignName}`, campaignId: null, creatorPhone: "system", createdByName: "HỆ THỐNG", status: "approved", createdAt: serverTimestamp() }); }); } catch (e){} };
+document.getElementById('btn-submit-tx').addEventListener('click', async () => { let amount = parseInt(document.getElementById('tx-amount').value); const desc = document.getElementById('tx-desc').value; const campaignId = document.getElementById('tx-campaign-select').value; if (!amount || amount <= 0 || !desc) return window.showToast("Nhập đầy đủ số tiền và mô tả!", "error"); const changeAmount = txType === "expense" ? -amount : amount; const txStatus = isManager ? "approved" : "pending"; try { if (isManager) { const targetRef = campaignId ? doc(db, "groups", currentGroupId, "campaigns", campaignId) : doc(db, "groups", currentGroupId); await updateDoc(targetRef, { balance: increment(changeAmount) }); } await addDoc(collection(db, "groups", currentGroupId, "transactions"), { type: txType, amount: amount, description: desc, campaignId: campaignId || null, creatorPhone: currentUser.phone, createdByName: currentUser.name, status: txStatus, reactions: {}, comments: [], createdAt: serverTimestamp() }); txModal.classList.add('hidden'); document.getElementById('tx-amount').value = ''; document.getElementById('tx-desc').value = ''; if (!isManager) { window.showToast("Đã gửi đề xuất chờ duyệt!", "success"); const managers = [currentGroupData.ownerId, ...(currentGroupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất giao dịch", `${currentUser.name} đề xuất ${txType==='income'?'THU':'CHI'} ${amount.toLocaleString()}đ`, currentGroupId)); } else { window.showToast("Đã lưu giao dịch thành công!", "success"); } } catch (e) { window.showToast("Lỗi: " + e.message, "error"); } });
+document.getElementById('btn-create-campaign').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Quỹ Sự Kiện", "", "Tên sự kiện mới..."); if (!name) return; try { await addDoc(collection(db, "groups", currentGroupId, "campaigns"), { name: name, status: "active", balance: 0, createdAt: serverTimestamp() }); window.showToast("Đã tạo sự kiện mới!", "success");} catch (e){} });
+window.closeCampaign = async (campaignId, campaignName) => { if (!(await window.customConfirm(`Xác nhận Tất toán sự kiện "${campaignName}"? Hệ thống sẽ dồn số dư vào Quỹ chung.`))) return; const groupRef = doc(db, "groups", currentGroupId); const campaignRef = doc(db, "groups", currentGroupId, "campaigns", campaignId); try { await runTransaction(db, async (t) => { const gDoc = await t.get(groupRef); const cDoc = await t.get(campaignRef); const cBal = cDoc.data().balance; t.update(groupRef, { balance: (gDoc.data().balance || 0) + cBal }); t.update(campaignRef, { balance: 0, status: "closed" }); t.set(doc(collection(db, "groups", currentGroupId, "transactions")), { type: cBal >= 0 ? "income" : "expense", amount: Math.abs(cBal), description: `Tất toán: ${campaignName}`, campaignId: null, creatorPhone: "system", createdByName: "HỆ THỐNG", status: "approved", createdAt: serverTimestamp() }); }); window.showToast("Tất toán thành công!", "success");} catch (e){} };
