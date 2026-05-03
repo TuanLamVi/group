@@ -9,6 +9,7 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- MÀN HÌNH XÁC THỰC -->
         <div id="auth-screen" class="screen">
             <div class="card login-card">
                 <h2 id="auth-title">Đăng nhập</h2>
@@ -29,6 +30,7 @@
             </div>
         </div>
 
+        <!-- MÀN HÌNH DASHBOARD -->
         <div id="dashboard-screen" class="screen hidden">
             <div class="profile-header card">
                 <div style="display:flex; align-items:center; gap:15px;">
@@ -55,33 +57,43 @@
             <div id="group-list" class="group-list"></div>
         </div>
 
+        <!-- MÀN HÌNH CHI TIẾT NHÓM -->
         <div id="main-screen" class="screen hidden">
             <button id="btn-back-dashboard" class="btn-sm btn-secondary btn-3d" style="margin-bottom:15px;">🔙 Trở về</button>
             
-            <div id="unified-pending-section" class="card hidden" style="border-left: 5px solid #EF4444;">
-                <h4 style="color:#EF4444; margin-bottom:12px; font-size:15px;">⚠️ YÊU CẦU CHỜ DUYỆT</h4>
-                <div id="unified-pending-list" class="transaction-list"></div>
-                <div id="pending-pagination" style="display:none; justify-content:center; gap:10px; margin-top:10px; align-items:center;">
-                    <button id="btn-pending-prev" class="btn-sm btn-secondary btn-3d">◀</button>
-                    <span id="pending-page-info" style="font-size:12px; font-weight:bold;">1/1</span>
-                    <button id="btn-pending-next" class="btn-sm btn-secondary btn-3d">▶</button>
+            <div class="card" style="padding: 20px; margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #1e293b; font-size: 18px;">Nhóm: <span id="group-name" style="color: #4776E6;">Đang tải...</span></h3>
+                    <span id="user-role" style="font-size: 12px;">...</span>
                 </div>
-            </div>
 
-            <div class="card" style="border-left: 5px solid #4776E6;">
-                <div class="section-header" style="margin-top:0; margin-bottom:10px;">
-                    <h4 style="color:#4776E6; font-size:15px;">📢 BẢNG TIN & CÔNG VIỆC</h4>
-                    <button id="btn-create-announcement" class="btn-sm btn-primary btn-3d hidden">➕ Đăng tin</button>
-                </div>
-                <div id="announcement-list" style="display:flex; flex-direction:column; gap:10px;">
+                <!-- VỊ TRÍ 1: VIỆC CẦN XỬ LÝ (TOP) -->
+                <div id="unified-pending-section" class="hidden" style="border-left: 5px solid #EF4444; padding-left: 10px; margin-bottom: 20px;">
+                    <h4 style="color:#EF4444; margin-bottom:12px; font-size:15px;">⚠️ YÊU CẦU CHỜ DUYỆT</h4>
+                    <div id="unified-pending-list" class="transaction-list"></div>
+                    <div id="pending-pagination" style="display:none; justify-content:center; gap:10px; margin-top:10px; align-items:center;">
+                        <button id="btn-pending-prev" class="btn-sm btn-secondary btn-3d">◀</button>
+                        <span id="pending-page-info" style="font-size:12px; font-weight:bold;">1/1</span>
+                        <button id="btn-pending-next" class="btn-sm btn-secondary btn-3d">▶</button>
                     </div>
-                <div id="anno-pagination" style="display:none; justify-content:center; gap:10px; margin-top:15px; align-items:center;">
-                    <button id="btn-anno-prev" class="btn-sm btn-secondary btn-3d">◀</button>
-                    <span id="anno-page-info" style="font-size:12px; font-weight:bold;">1/1</span>
-                    <button id="btn-anno-next" class="btn-sm btn-secondary btn-3d">▶</button>
+                </div>
+
+                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC -->
+                <div style="border-left: 5px solid #4776E6; padding-left: 10px;">
+                    <div class="section-header" style="margin-top:0; margin-bottom:10px;">
+                        <h4 style="color:#4776E6; font-size:15px;">📢 BẢNG TIN & CÔNG VIỆC</h4>
+                        <button id="btn-create-announcement" class="btn-sm btn-primary btn-3d hidden">➕ Đăng tin</button>
+                    </div>
+                    <div id="announcement-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+                    <div id="anno-pagination" style="display:none; justify-content:center; gap:10px; margin-top:15px; align-items:center;">
+                        <button id="btn-anno-prev" class="btn-sm btn-secondary btn-3d">◀</button>
+                        <span id="anno-page-info" style="font-size:12px; font-weight:bold;">1/1</span>
+                        <button id="btn-anno-next" class="btn-sm btn-secondary btn-3d">▶</button>
+                    </div>
                 </div>
             </div>
 
+            <!-- VỊ TRÍ 3: THÀNH VIÊN -->
             <div class="campaign-section" style="margin-bottom:24px;">
                 <div class="section-header">
                     <h3>Thành viên nhóm</h3>
@@ -89,7 +101,7 @@
                 </div>
                 <div style="position:relative; margin-bottom:15px;">
                     <span style="position:absolute; left:12px; top:12px; color:gray;">🔍</span>
-                    <input type="text" id="search-member-input" placeholder="Tìm thành viên...">
+                    <input type="text" id="search-member-input" placeholder="Tìm tên hoặc SĐT..." style="width: 100%; padding: 10px 10px 10px 35px; border-radius: 12px; border: 2px solid #e2e8f0; outline: none;">
                 </div>
                 <div id="member-list" class="transaction-list" style="padding:5px 10px; background:#fff; border-radius:16px;"></div>
                 <div id="pagination-controls" style="display:flex; justify-content:center; gap:15px; margin-top:15px; align-items:center;">
@@ -99,6 +111,7 @@
                 </div>
             </div>
 
+            <!-- VỊ TRÍ 4: NGHIỆP VỤ QUỸ -->
             <div class="campaign-section">
                 <div class="section-header">
                     <h3>Nghiệp vụ Quỹ</h3>
@@ -115,7 +128,8 @@
                 <div id="campaign-list" class="campaign-list"></div>
             </div>
 
-            <div class="recent-transactions">
+            <!-- VỊ TRÍ 5: LỊCH SỬ QUỸ -->
+            <div class="recent-transactions" style="margin-top: 24px;">
                 <div class="section-header">
                     <h3 style="margin:0;">Lịch sử quỹ</h3>
                     <button id="btn-open-filter" class="btn-sm btn-secondary btn-3d" style="background-color:#0EA5E9;">🔍 Tra cứu</button>
@@ -130,6 +144,7 @@
         </div>
     </div>
 
+    <!-- MODAL HỆ THỐNG -->
     <div id="custom-prompt-modal" class="modal hidden">
         <div class="modal-content prompt-large">
             <h3 id="prompt-title">Nhập thông tin</h3>
