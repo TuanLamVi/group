@@ -146,3 +146,8 @@ body { background-color: #f0f4f8; color: #1a1d20; display: flex; justify-content
 .noti-time { font-size: 11px; color: #94a3b8; margin-top: 8px; font-weight: 600;}
 .pending-actions { display: flex; gap: 8px; margin-top: 10px; }
 .pending-item { background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 12px; padding: 14px; }
+/* Ép các Popup Xác nhận / Nhập liệu luôn nổi lên trên cùng (chống bị đè) */
+#custom-confirm-modal, 
+#custom-prompt-modal {
+    z-index: 9999 !important;
+}
