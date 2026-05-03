@@ -4,11 +4,12 @@ import {
   addDoc,
   getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ===== LOGIN GIẢ LẬP =====
 let currentUser = null;
 
 function login() {
   const phone = document.getElementById("phone").value;
-
   if (!phone) return alert("Nhập số điện thoại!");
 
   currentUser = { id: phone };
@@ -17,70 +18,48 @@ function login() {
   loadGroups();
 }
 
-function createGroup() {
+window.login = login;
+
+// ===== TẠO NHÓM =====
+async function createGroup() {
   if (!currentUser) return alert("Đăng nhập trước!");
 
   const name = prompt("Tên nhóm:");
   if (!name) return;
 
-  const group = {
-    id: Date.now().toString(),
-    name,
-    members: [currentUser.id],
-    balance: 0
-  };
+  await addDoc(collection(db, "groups"), {
+    name: name,
+    balance: 0,
+    createdAt: new Date()
+  });
 
-  localStorage.setItem(group.id, JSON.stringify(group));
+  alert("Đã tạo nhóm!");
   loadGroups();
 }
 
-function loadGroups() {
+window.createGroup = createGroup;
+
+// ===== LOAD DANH SÁCH NHÓM =====
+async function loadGroups() {
   const container = document.getElementById("groups");
   container.innerHTML = "";
 
-  Object.keys(localStorage).forEach(key => {
-    try {
-      const group = JSON.parse(localStorage.getItem(key));
+  const snapshot = await getDocs(collection(db, "groups"));
 
-      if (group.members.includes(currentUser.id)) {
-        const div = document.createElement("div");
-        div.className = "group";
+  snapshot.forEach(doc => {
+    const group = doc.data();
 
-        div.innerHTML = `
-          <h3>${group.name}</h3>
-          <p class="balance">Số dư: ${group.balance.toLocaleString()} VND</p>
-          <div class="actions">
-            <button onclick="addMoney('${group.id}')">+ Thu</button>
-            <button onclick="spendMoney('${group.id}')">- Chi</button>
-          </div>
-        `;
+    const div = document.createElement("div");
+    div.style.background = "white";
+    div.style.padding = "10px";
+    div.style.marginBottom = "10px";
+    div.style.borderRadius = "10px";
 
-        container.appendChild(div);
-      }
-    } catch (e) {}
+    div.innerHTML = `
+      <h3>${group.name}</h3>
+      <p>Số dư: ${group.balance.toLocaleString()} VND</p>
+    `;
+
+    container.appendChild(div);
   });
-}
-
-function addMoney(id) {
-  let group = JSON.parse(localStorage.getItem(id));
-  const amount = parseInt(prompt("Nhập tiền thu:"));
-
-  if (!amount) return;
-
-  group.balance += amount;
-  localStorage.setItem(id, JSON.stringify(group));
-
-  loadGroups();
-}
-
-function spendMoney(id) {
-  let group = JSON.parse(localStorage.getItem(id));
-  const amount = parseInt(prompt("Nhập tiền chi:"));
-
-  if (!amount) return;
-
-  group.balance -= amount;
-  localStorage.setItem(id, JSON.stringify(group));
-
-  loadGroups();
 }
