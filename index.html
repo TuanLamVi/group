@@ -78,7 +78,7 @@
                     </div>
                 </div>
 
-                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC -->
+                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC CÓ TƯƠNG TÁC -->
                 <div style="border-left: 5px solid #4776E6; padding-left: 10px;">
                     <div class="section-header" style="margin-top:0; margin-bottom:10px;">
                         <h4 style="color:#4776E6; font-size:15px;">📢 BẢNG TIN & CÔNG VIỆC</h4>
@@ -144,24 +144,23 @@
         </div>
     </div>
 
-    <!-- MODAL HIỂN THỊ ĐỌC BẢNG TIN (CÓ TƯƠNG TÁC LIKE/COMMENT) -->
+    <!-- MODAL HIỂN THỊ ĐỌC BẢNG TIN -->
     <div id="view-anno-modal" class="modal hidden">
         <div class="modal-content prompt-large" style="max-height: 90vh; overflow-y: auto;">
-            <div id="view-anno-container">
-                <!-- Javascript sẽ tự động đổ Nội dung bài báo và khu vực Bình luận vào đây -->
-            </div>
+            <div id="view-anno-container"></div>
             <div class="modal-actions" style="margin-top: 15px;">
                 <button id="btn-close-view-anno" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL ĐĂNG/SỬA BẢNG TIN -->
+    <!-- MODAL ĐĂNG/SỬA BẢNG TIN (CẬP NHẬT TEXTAREA CHO TIÊU ĐỀ) -->
     <div id="anno-modal" class="modal hidden">
         <div class="modal-content prompt-large">
-            <h3 id="anno-modal-title">📢 Đăng Bản Tin</h3>
+            <h3 id="anno-modal-title" style="margin-bottom: 5px;">📢 Đăng Bản Tin</h3>
             <input type="hidden" id="anno-id">
-            <input type="text" id="anno-title-input" placeholder="Tiêu đề bài viết..." style="font-weight:bold;">
+            <!-- Đổi sang textarea để hiển thị nhiều dòng -->
+            <textarea id="anno-title-input" class="large-title-input" placeholder="Nhập tiêu đề (có thể xuống dòng)..." rows="2"></textarea>
             <textarea id="anno-content-input" placeholder="Viết nội dung chi tiết... (hỗ trợ chèn icon emoji từ bàn phím ✨)" rows="6"></textarea>
             <div class="modal-actions">
                 <button id="btn-cancel-anno" class="btn btn-secondary btn-3d">Hủy</button>
@@ -170,7 +169,7 @@
         </div>
     </div>
 
-    <!-- MODAL HỆ THỐNG KHÁC -->
+    <!-- CÁC MODAL HỆ THỐNG KHÁC (GIỮ NGUYÊN) -->
     <div id="custom-prompt-modal" class="modal hidden"><div class="modal-content prompt-large"><h3 id="prompt-title">Nhập thông tin</h3><p id="prompt-desc" style="font-size:13px; color:gray; margin-bottom:5px;"></p><textarea id="prompt-textarea" placeholder="Viết nội dung tại đây..." rows="5"></textarea><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">Xác nhận</button></div></div></div>
     <div id="tx-modal" class="modal hidden"><div class="modal-content"><h3>Thêm Giao Dịch</h3><input type="number" id="tx-amount" placeholder="Số tiền (VNĐ)..."><input type="text" id="tx-desc" placeholder="Mô tả ngắn gọn..."><select id="tx-campaign-select"><option value="">-- Quỹ chung --</option></select><div class="modal-actions"><button id="btn-cancel-tx" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-tx" class="btn btn-success btn-3d">Xác nhận</button></div></div></div>
     <div id="view-profile-modal" class="modal hidden"><div class="modal-content" style="text-align: center;"><h3 style="margin-bottom: 15px;">👀 Hồ sơ</h3><img id="view-profile-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px; border: 3px solid #4776E6;"><h2 id="view-profile-name" style="font-size: 20px; color: #1e293b;">Tên</h2><p style="color: gray; font-size: 14px; margin-bottom: 15px;">📞 <span id="view-profile-phone">SĐT</span></p><div style="background: #f8fafc; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 15px;"><p>🏠 <b>Địa chỉ:</b> <span id="view-profile-address">...</span></p><p style="margin-top: 8px;">👤 <b>Người mời:</b> <span id="view-profile-inviter">...</span></p></div><button id="btn-close-view-profile" class="btn btn-secondary btn-3d">Đóng</button></div></div>
