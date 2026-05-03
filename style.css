@@ -286,3 +286,48 @@ body {
 #auth-screen input {
     margin-bottom: 12px;
 }
+/* Styling cho Profile và Danh bạ */
+.profile-header {
+    display: flex; flex-direction: column; margin-bottom: 20px; padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+.avatar-img {
+    width: 50px; height: 50px; border-radius: 50%; object-fit: cover;
+    border: 2px solid #ccc; background-color: #fff;
+}
+#auth-screen input { margin-bottom: 12px; }
+
+/* CSS Danh sách thành viên kiểu Accordion (Xổ xuống) */
+.member-item {
+    border-bottom: 1px solid #f1f1f1;
+}
+.member-item:last-child { border-bottom: none; }
+
+.member-summary {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; padding: 10px 5px; border-radius: 8px; transition: 0.2s;
+}
+.member-summary:hover { background-color: #f1f3f5; }
+
+.member-details {
+    background-color: #f8f9fa; padding: 15px; border-radius: 8px;
+    margin-bottom: 10px; font-size: 14px; border-left: 4px solid #007bff;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Nút liên hệ (Gọi & Zalo) */
+.contact-actions {
+    display: flex; gap: 10px; margin-top: 12px;
+}
+.contact-actions a {
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+    padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 13px; color: white;
+    flex: 1; text-align: center;
+}
+.btn-call { background-color: #28a745; }
+.btn-zalo { background-color: #0068ff; }
