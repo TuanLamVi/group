@@ -1,3 +1,9 @@
+import { db } from "./firebase.js";
+import {
+  collection,
+  addDoc,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 let currentUser = null;
 
 function login() {
