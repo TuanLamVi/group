@@ -1,22 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Quỹ nhóm</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quỹ nhóm</title>
+
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f2f5f9;
+  margin: 0;
+  padding: 15px;
+}
+
+.container {
+  max-width: 500px;
+  margin: auto;
+}
+
+h2 {
+  text-align: center;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  margin-top: 15px;
+}
+
+.balance {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2ecc71;
+}
+
+button {
+  border: none;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 5px 3px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-main {
+  width: 100%;
+  background: #3498db;
+  color: white;
+}
+
+.btn-add {
+  background: #2ecc71;
+  color: white;
+}
+
+.btn-sub {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-member {
+  background: #9b59b6;
+  color: white;
+}
+
+.btn-history {
+  background: #34495e;
+  color: white;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+}
+</style>
 </head>
-<body style="font-family:sans-serif; max-width:500px; margin:auto">
 
-  <h2>💰 Quản lý quỹ nhóm</h2>
+<body>
 
-  <input id="phone" placeholder="Nhập số điện thoại" />
-  <button onclick="login()">Đăng nhập</button>
+<div class="container">
 
-  <hr>
+  <h2>💰 Quỹ nhóm</h2>
 
-  <button onclick="createGroup()">+ Tạo nhóm</button>
+  <div class="card">
+    <input id="phone" placeholder="Nhập số điện thoại">
+    <button class="btn-main" onclick="login()">Đăng nhập</button>
+  </div>
+
+  <button class="btn-main" onclick="createGroup()">+ Tạo nhóm</button>
 
   <div id="groups"></div>
 
-  <script type="module" src="app.js"></script>
+</div>
+
+<script type="module" src="app.js"></script>
+
 </body>
 </html>
