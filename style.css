@@ -134,3 +134,38 @@ body { background-color: #f0f4f8; color: #1a1d20; display: flex; justify-content
 .noti-time { font-size: 11px; color: #94a3b8; margin-top: 8px; font-weight: 600;}
 .pending-actions { display: flex; gap: 8px; margin-top: 10px; }
 .pending-item { background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 12px; padding: 14px; }
+/* ... (Giữ toàn bộ code cũ của bạn) ... */
+
+/* CHỈ THAY ĐỔI / THÊM CÁC DÒNG NÀY Ở CUỐI FILE */
+
+.modal-content.prompt-large {
+    max-width: 600px; /* Rộng rãi thoải mái */
+    width: 95%;
+}
+
+#prompt-textarea {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    font-size: 16px;
+    outline: none;
+    resize: vertical;
+    background: #f8fafc;
+    font-family: inherit;
+}
+#prompt-textarea:focus { border-color: #4776E6; background: #fff; }
+
+/* Styling cho bảng thông báo */
+.anno-item {
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    padding: 15px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+.anno-title { font-weight: 800; color: #1e293b; margin-bottom: 5px; font-size: 16px; }
+.anno-body { font-size: 14px; color: #475569; line-height: 1.5; white-space: pre-wrap; }
+.anno-meta { font-size: 11px; color: #94a3b8; margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+
+/* ... (Phần còn lại giữ nguyên) ... */
