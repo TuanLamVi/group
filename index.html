@@ -78,7 +78,7 @@
                     </div>
                 </div>
 
-                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC CÓ TƯƠNG TÁC -->
+                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC -->
                 <div style="border-left: 5px solid #4776E6; padding-left: 10px;">
                     <div class="section-header" style="margin-top:0; margin-bottom:10px;">
                         <h4 style="color:#4776E6; font-size:15px;">📢 BẢNG TIN & CÔNG VIỆC</h4>
@@ -144,13 +144,25 @@
         </div>
     </div>
 
-    <!-- MODAL ĐĂNG/SỬA THÔNG BÁO (BẢNG TIN) -->
+    <!-- MODAL HIỂN THỊ ĐỌC BẢNG TIN (CÓ TƯƠNG TÁC LIKE/COMMENT) -->
+    <div id="view-anno-modal" class="modal hidden">
+        <div class="modal-content prompt-large" style="max-height: 90vh; overflow-y: auto;">
+            <div id="view-anno-container">
+                <!-- Javascript sẽ tự động đổ Nội dung bài báo và khu vực Bình luận vào đây -->
+            </div>
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button id="btn-close-view-anno" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ĐĂNG/SỬA BẢNG TIN -->
     <div id="anno-modal" class="modal hidden">
         <div class="modal-content prompt-large">
             <h3 id="anno-modal-title">📢 Đăng Bản Tin</h3>
             <input type="hidden" id="anno-id">
-            <input type="text" id="anno-title-input" placeholder="Tiêu đề (VD: Lịch trình tham quan 🏖️)..." style="font-weight:bold;">
-            <textarea id="anno-content-input" placeholder="Viết nội dung chi tiết... (hỗ trợ chèn icon emoji từ bàn phím điện thoại ✨)" rows="6"></textarea>
+            <input type="text" id="anno-title-input" placeholder="Tiêu đề bài viết..." style="font-weight:bold;">
+            <textarea id="anno-content-input" placeholder="Viết nội dung chi tiết... (hỗ trợ chèn icon emoji từ bàn phím ✨)" rows="6"></textarea>
             <div class="modal-actions">
                 <button id="btn-cancel-anno" class="btn btn-secondary btn-3d">Hủy</button>
                 <button id="btn-submit-anno" class="btn btn-primary btn-3d">Đăng bài</button>
