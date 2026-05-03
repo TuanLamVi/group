@@ -204,3 +204,30 @@ body {
 .btn-approve { background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;}
 .btn-reject { background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;}
 .pending-item { background: #fff3cd; border-left: 4px solid #ffc107; }
+/* Giao diện thẻ danh sách nhóm */
+.group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.group-item-card {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    border-left: 5px solid #007bff;
+    transition: 0.2s;
+}
+.group-item-card:hover {
+    transform: scale(1.02);
+}
+.group-item-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.group-item-role {
+    font-size: 13px;
+    color: gray;
+}
