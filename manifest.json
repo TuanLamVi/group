@@ -1,0 +1,21 @@
+{
+  "name": "Điều Hành Quỹ & Công Việc",
+  "short_name": "Quỹ Nhóm",
+  "description": "Ứng dụng quản lý cộng đồng, tài chính và công việc",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#4776E6",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
