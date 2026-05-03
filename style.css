@@ -140,3 +140,18 @@ body { background-color: #f0f4f8; color: #1a1d20; display: flex; justify-content
 .noti-time { font-size: 11px; color: #94a3b8; margin-top: 8px; font-weight: 600;}
 .pending-actions { display: flex; gap: 8px; margin-top: 10px; }
 .pending-item { background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 12px; padding: 14px; }
+/* HIỆU ỨNG NHÃN "TIN MỚI" NGOÀI DASHBOARD NHÓM */
+.group-badge-new {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #EF4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+    animation: pulseNew 2s infinite;
+    z-index: 2;
+}
