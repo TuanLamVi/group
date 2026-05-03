@@ -10,26 +10,31 @@ import {
 let currentUser = null;
 
 // ===== LOGIN =====
-function login() {
+async function login() {
   const phone = document.getElementById("phone").value;
   if (!phone) return alert("Nhập số điện thoại!");
 
-  currentUser = { id: phone };
-  alert("Xin chào " + phone);
+  currentUser = phone;
 
+  // lưu user nếu chưa có
+  await addDoc(collection(db, "users"), {
+    phone
+  });
+
+  alert("Xin chào " + phone);
   loadGroups();
 }
 window.login = login;
 
 // ===== TẠO NHÓM =====
 async function createGroup() {
-  if (!currentUser) return alert("Đăng nhập trước!");
-
   const name = prompt("Tên nhóm:");
   if (!name) return;
 
   await addDoc(collection(db, "groups"), {
     name,
+    owner: currentUser,
+    members: [currentUser],
     balance: 0
   });
 
@@ -48,23 +53,52 @@ async function loadGroups() {
     const group = docSnap.data();
     const id = docSnap.id;
 
+    // chỉ hiển thị nếu user thuộc nhóm
+    if (!group.members.includes(currentUser)) return;
+
     const div = document.createElement("div");
     div.style.border = "1px solid #ccc";
-    div.style.padding = "10px";
     div.style.marginTop = "10px";
+    div.style.padding = "10px";
 
     div.innerHTML = `
       <h3>${group.name}</h3>
       <p>💰 ${group.balance} VND</p>
+      <p>👑 Chủ nhóm: ${group.owner}</p>
 
       <button onclick="addMoney('${id}', ${group.balance})">+ Thu</button>
       <button onclick="spendMoney('${id}', ${group.balance})">- Chi</button>
+      <button onclick="addMember('${id}')">➕ Thêm thành viên</button>
       <button onclick="viewHistory('${id}')">📜 Lịch sử</button>
     `;
 
     container.appendChild(div);
   });
 }
+
+// ===== THÊM THÀNH VIÊN =====
+async function addMember(groupId) {
+  const phone = prompt("Nhập SĐT thành viên:");
+  if (!phone) return;
+
+  const snapshot = await getDocs(collection(db, "groups"));
+
+  snapshot.forEach(async docSnap => {
+    if (docSnap.id === groupId) {
+      const group = docSnap.data();
+
+      const newMembers = [...group.members, phone];
+
+      await updateDoc(doc(db, "groups", groupId), {
+        members: newMembers
+      });
+
+      alert("Đã thêm thành viên!");
+      loadGroups();
+    }
+  });
+}
+window.addMember = addMember;
 
 // ===== THU =====
 async function addMoney(id, balance) {
@@ -79,7 +113,7 @@ async function addMoney(id, balance) {
     groupId: id,
     type: "income",
     amount,
-    time: new Date()
+    createdBy: currentUser
   });
 
   loadGroups();
@@ -99,7 +133,7 @@ async function spendMoney(id, balance) {
     groupId: id,
     type: "expense",
     amount,
-    time: new Date()
+    createdBy: currentUser
   });
 
   loadGroups();
@@ -114,8 +148,9 @@ async function viewHistory(groupId) {
 
   snapshot.forEach(doc => {
     const t = doc.data();
+
     if (t.groupId === groupId) {
-      text += `${t.type === "income" ? "+ Thu" : "- Chi"}: ${t.amount} VND\n`;
+      text += `${t.type === "income" ? "+ Thu" : "- Chi"}: ${t.amount} (by ${t.createdBy})\n`;
     }
   });
 
