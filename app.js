@@ -31,7 +31,23 @@ let unsubGroup = null;
 let unsubCampaigns = null;
 let unsubTx = null;
 
-// ================= 1. LUỒNG ĐĂNG NHẬP =================
+// ================= 1. LUỒNG ĐĂNG NHẬP & ĐĂNG XUẤT =================
+
+// 1.1 Kiểm tra tự động đăng nhập ngay khi mở trang
+window.addEventListener('DOMContentLoaded', () => {
+    const savedPhone = localStorage.getItem('userPhone'); // Kiểm tra bộ nhớ trình duyệt
+    if (savedPhone) {
+        // Nếu có dữ liệu, tự động đăng nhập
+        currentUser = { phone: savedPhone };
+        document.getElementById('display-user-phone').innerText = savedPhone;
+        
+        loginScreen.classList.add('hidden');
+        dashboardScreen.classList.remove('hidden');
+        loadUserGroups(); 
+    }
+});
+
+// 1.2 Xử lý khi bấm nút Đăng nhập
 document.getElementById('login-btn').addEventListener('click', () => {
     const phone = document.getElementById('phone-input').value.trim();
     if (phone.length < 9) return alert("Nhập số điện thoại hợp lệ!");
@@ -39,9 +55,33 @@ document.getElementById('login-btn').addEventListener('click', () => {
     currentUser = { phone };
     document.getElementById('display-user-phone').innerText = phone;
     
+    // LƯU SỐ ĐIỆN THOẠI VÀO BỘ NHỚ TRÌNH DUYỆT
+    localStorage.setItem('userPhone', phone);
+    
     loginScreen.classList.add('hidden');
     dashboardScreen.classList.remove('hidden');
     loadUserGroups(); 
+});
+
+// 1.3 Xử lý Đăng xuất
+document.getElementById('btn-logout').addEventListener('click', () => {
+    if (!confirm("Bạn có chắc muốn đăng xuất?")) return;
+
+    // Xóa dữ liệu trong bộ nhớ trình duyệt
+    localStorage.removeItem('userPhone');
+    currentUser = null;
+    currentGroupId = null;
+
+    // Tắt các lắng nghe dữ liệu để đỡ tốn tài nguyên
+    if(unsubGroup) unsubGroup();
+    if(unsubCampaigns) unsubCampaigns();
+    if(unsubTx) unsubTx();
+
+    // Reset giao diện
+    document.getElementById('phone-input').value = '';
+    dashboardScreen.classList.add('hidden');
+    mainScreen.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
 });
 
 // ================= 2. QUẢN LÝ DANH SÁCH NHÓM (DASHBOARD) =================
