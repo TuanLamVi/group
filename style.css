@@ -1,64 +1,111 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #f5f6fa;
-  margin: 0;
+    background-color: #f4f6f8;
+    color: #333;
+    display: flex;
+    justify-content: center;
 }
 
-.container {
-  max-width: 500px;
-  margin: auto;
-  padding: 20px;
+/* Tối ưu hiển thị như app điện thoại */
+.app-container {
+    width: 100%;
+    max-width: 480px; /* Kích thước chuẩn mobile */
+    min-height: 100vh;
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
 }
 
-h2 {
-  text-align: center;
+.hidden {
+    display: none !important;
 }
 
+/* Style cho các Card */
 .card {
-  background: white;
-  padding: 15px;
-  border-radius: 12px;
-  margin-bottom: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
 }
 
-input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+.login-card {
+    text-align: center;
+    margin-top: 50px;
 }
 
-button {
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 8px;
-  background: #4CAF50;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
+.login-card input {
+    width: 100%;
+    padding: 12px;
+    margin: 20px 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
 }
 
-button:hover {
-  background: #45a049;
+/* Thẻ số dư */
+.balance-card {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    text-align: center;
 }
 
-.group {
-  background: white;
-  padding: 15px;
-  border-radius: 12px;
-  margin-bottom: 10px;
+.balance-card h3 {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-bottom: 15px;
 }
 
-.balance {
-  font-size: 18px;
-  font-weight: bold;
-  color: #2c3e50;
+.balance-amount {
+    font-size: 36px;
+    margin-top: 5px;
 }
 
-.actions button {
-  width: 48%;
-  margin-top: 10px;
+/* Nút bấm chung */
+.btn {
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    transition: 0.2s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary { background: #007bff; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-secondary { background: #6c757d; color: white; }
+
+/* Bố cục nút Thu/Chi */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+/* Danh sách giao dịch */
+.transaction-list {
+    list-style: none;
+}
+
+.transaction-item {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    border-left: 4px solid #ccc;
 }
