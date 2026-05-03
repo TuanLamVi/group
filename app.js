@@ -25,7 +25,7 @@ let unsubUser = null; let unsubGroups = null; let unsubGroup = null; let unsubCa
 // Pagination
 let cachedTransactions = []; let approvedTransactions = []; let currentTxPage = 1; const TX_PER_PAGE = 5; 
 let pendingMembersArr = []; let pendingTxArr = []; let currentPendingPage = 1; const PENDING_PER_PAGE = 5;
-let groupAnnouncements = []; let currentAnnoPage = 1; const ANNO_PER_PAGE = 5; let currentOpenAnnoId = null;
+let groupAnnouncements = []; let currentAnnoPage = 1; const ANNO_PER_PAGE = 3; let currentOpenAnnoId = null;
 let currentlyOpenMember = null; let cachedGroupMembersArray = []; let searchMemberQuery = ""; let currentMemberPage = 1; const MEMBERS_PER_PAGE = 10;
 
 const FB_EMOJIS = { '👍': { text: 'Thích', color: '#056BF0' }, '❤️': { text: 'Yêu thích', color: '#F33E58' }, '🥰': { text: 'Thương', color: '#F7B125' }, '😂': { text: 'Haha', color: '#F7B125' }, '😮': { text: 'Wow', color: '#F7B125' }, '😢': { text: 'Buồn', color: '#F7B125' }, '😡': { text: 'Phẫn nộ', color: '#E9710F' } };
