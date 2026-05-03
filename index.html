@@ -13,19 +13,37 @@
         <div id="auth-screen" class="screen">
             <div class="card login-card">
                 <h2 id="auth-title">Đăng nhập</h2>
+                
+                <!-- FORM ĐĂNG KÝ (Bổ sung Mã PIN bảo mật) -->
                 <div id="register-form" class="hidden">
                     <input type="text" id="reg-name" placeholder="Họ và tên...">
-                    <input type="tel" id="reg-phone" placeholder="Số điện thoại...">
+                    <input type="tel" id="reg-phone" placeholder="Số điện thoại (VD: 0912... hoặc +84...)">
                     <input type="text" id="reg-address" placeholder="Địa chỉ thường trú...">
                     <input type="password" id="reg-password" placeholder="Mật khẩu (>8 ký tự)...">
-                    <button id="btn-register-submit" class="btn btn-success btn-3d">Đăng ký ngay</button>
-                    <p style="margin-top:15px; font-size:14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color:#4776E6;">Đăng nhập</a></p>
+                    <input type="password" id="reg-pin" placeholder="Mã PIN (4-6 số để lấy lại mật khẩu)..." maxlength="6" pattern="\d*">
+                    <button id="btn-register-submit" class="btn btn-success btn-3d" style="margin-top:10px;">Đăng ký ngay</button>
+                    <p style="margin-top:15px; font-size:14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color:#4776E6; font-weight:bold;">Đăng nhập</a></p>
                 </div>
+
+                <!-- FORM ĐĂNG NHẬP (Bổ sung Quên mật khẩu) -->
                 <div id="login-form">
                     <input type="tel" id="login-phone" placeholder="Số điện thoại...">
                     <input type="password" id="login-password" placeholder="Mật khẩu...">
+                    <div style="text-align: right; margin-bottom: 15px;">
+                        <a href="#" id="link-to-forgot" style="color:gray; font-size:13px; text-decoration:none;">Quên mật khẩu?</a>
+                    </div>
                     <button id="btn-login-submit" class="btn btn-primary btn-3d">Vào ứng dụng</button>
-                    <p style="margin-top:15px; font-size:14px;">Chưa có tài khoản? <a href="#" id="link-to-register" style="color:#4776E6;">Đăng ký</a></p>
+                    <p style="margin-top:15px; font-size:14px;">Chưa có tài khoản? <a href="#" id="link-to-register" style="color:#4776E6; font-weight:bold;">Đăng ký</a></p>
+                </div>
+
+                <!-- FORM QUÊN MẬT KHẨU (Dùng PIN) -->
+                <div id="forgot-form" class="hidden">
+                    <p style="font-size:13px; color:gray; margin-bottom:15px;">Nhập SĐT và Mã PIN đã tạo lúc đăng ký để đổi mật khẩu.</p>
+                    <input type="tel" id="forgot-phone" placeholder="Số điện thoại của bạn...">
+                    <input type="password" id="forgot-pin" placeholder="Mã PIN bảo mật...">
+                    <input type="password" id="forgot-new-password" placeholder="Mật khẩu MỚI...">
+                    <button id="btn-forgot-submit" class="btn btn-primary btn-3d" style="margin-top:10px;">Đổi mật khẩu</button>
+                    <p style="margin-top:15px; font-size:14px;"><a href="#" id="link-forgot-to-login" style="color:gray;">🔙 Quay lại đăng nhập</a></p>
                 </div>
             </div>
         </div>
@@ -70,7 +88,6 @@
                     <span id="user-role" style="font-size: 12px;">...</span>
                 </div>
 
-                <!-- VỊ TRÍ 1: VIỆC CẦN XỬ LÝ -->
                 <div id="unified-pending-section" class="hidden" style="border-left: 5px solid #EF4444; padding-left: 10px; margin-bottom: 20px;">
                     <h4 style="color:#EF4444; margin-bottom:12px; font-size:15px;">⚠️ YÊU CẦU CHỜ DUYỆT</h4>
                     <div id="unified-pending-list" class="transaction-list"></div>
@@ -81,7 +98,6 @@
                     </div>
                 </div>
 
-                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC -->
                 <div style="border-left: 5px solid #4776E6; padding-left: 10px;">
                     <div class="section-header" style="margin-top:0; margin-bottom:10px;">
                         <h4 style="color:#4776E6; font-size:15px;">📢 BẢNG TIN & CÔNG VIỆC</h4>
@@ -96,7 +112,7 @@
                 </div>
             </div>
 
-            <!-- VỊ TRÍ 3: THÀNH VIÊN -->
+            <!-- THÀNH VIÊN -->
             <div class="campaign-section" style="margin-bottom:24px;">
                 <div class="section-header">
                     <h3>Thành viên nhóm</h3>
@@ -114,7 +130,7 @@
                 </div>
             </div>
 
-            <!-- VỊ TRÍ 4: NGHIỆP VỤ QUỸ -->
+            <!-- NGHIỆP VỤ QUỸ -->
             <div class="campaign-section">
                 <div class="section-header">
                     <h3>Nghiệp vụ Quỹ</h3>
@@ -131,7 +147,7 @@
                 <div id="campaign-list" class="campaign-list"></div>
             </div>
 
-            <!-- VỊ TRÍ 5: LỊCH SỬ QUỸ -->
+            <!-- LỊCH SỬ QUỸ -->
             <div class="recent-transactions" style="margin-top: 24px;">
                 <div class="section-header">
                     <h3 style="margin:0;">Lịch sử quỹ</h3>
@@ -147,38 +163,33 @@
         </div>
     </div>
 
+    <!-- HỘP CHỨA TOAST MESSAGE (THÔNG BÁO GÓC TRÊN) -->
+    <div id="toast-container"></div>
+
+    <!-- MODAL XÁC NHẬN TÙY CHỈNH (THAY THẾ CONFIRM GỐC) -->
+    <div id="custom-confirm-modal" class="modal hidden">
+        <div class="modal-content" style="text-align: center; max-width: 350px;">
+            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+            <h3 style="margin-bottom: 10px; color: #1e293b;">Xác nhận</h3>
+            <p id="confirm-msg" style="color: #475569; font-size: 15px; line-height: 1.5; margin-bottom: 20px;"></p>
+            <div class="modal-actions" style="display: flex; gap: 10px; justify-content: center;">
+                <button id="btn-confirm-no" class="btn btn-secondary btn-3d" style="flex: 1;">Hủy</button>
+                <button id="btn-confirm-yes" class="btn btn-danger btn-3d" style="flex: 1;">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL HIỂN THỊ ĐỌC BẢNG TIN -->
-    <div id="view-anno-modal" class="modal hidden">
-        <div class="modal-content prompt-large" style="max-height: 90vh; overflow-y: auto;">
-            <div id="view-anno-container"></div>
-            <div class="modal-actions" style="margin-top: 15px;">
-                <button id="btn-close-view-anno" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button>
-            </div>
-        </div>
-    </div>
-
+    <div id="view-anno-modal" class="modal hidden"><div class="modal-content prompt-large" style="max-height: 90vh; overflow-y: auto;"><div id="view-anno-container"></div><div class="modal-actions" style="margin-top: 15px;"><button id="btn-close-view-anno" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
     <!-- MODAL ĐĂNG/SỬA BẢNG TIN -->
-    <div id="anno-modal" class="modal hidden">
-        <div class="modal-content prompt-large">
-            <h3 id="anno-modal-title" style="margin-bottom: 5px;">📢 Đăng Bản Tin</h3>
-            <input type="hidden" id="anno-id">
-            <textarea id="anno-title-input" class="large-title-input" placeholder="Nhập tiêu đề (có thể xuống dòng)..." rows="2"></textarea>
-            <textarea id="anno-content-input" placeholder="Viết nội dung chi tiết... (hỗ trợ chèn icon emoji từ bàn phím ✨)" rows="6"></textarea>
-            <div class="modal-actions">
-                <button id="btn-cancel-anno" class="btn btn-secondary btn-3d">Hủy</button>
-                <button id="btn-submit-anno" class="btn btn-primary btn-3d">Đăng bài</button>
-            </div>
-        </div>
-    </div>
-
+    <div id="anno-modal" class="modal hidden"><div class="modal-content prompt-large"><h3 id="anno-modal-title" style="margin-bottom: 5px;">📢 Đăng Bản Tin</h3><input type="hidden" id="anno-id"><textarea id="anno-title-input" class="large-title-input" placeholder="Nhập tiêu đề (có thể xuống dòng)..." rows="2"></textarea><textarea id="anno-content-input" placeholder="Viết nội dung chi tiết... (hỗ trợ chèn icon emoji từ bàn phím ✨)" rows="6"></textarea><div class="modal-actions"><button id="btn-cancel-anno" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-anno" class="btn btn-primary btn-3d">Đăng bài</button></div></div></div>
+    
     <!-- CÁC MODAL HỆ THỐNG KHÁC -->
     <div id="custom-prompt-modal" class="modal hidden"><div class="modal-content prompt-large"><h3 id="prompt-title">Nhập thông tin</h3><p id="prompt-desc" style="font-size:13px; color:gray; margin-bottom:5px;"></p><textarea id="prompt-textarea" placeholder="Viết nội dung tại đây..." rows="5"></textarea><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">Xác nhận</button></div></div></div>
     <div id="tx-modal" class="modal hidden"><div class="modal-content"><h3>Thêm Giao Dịch</h3><input type="number" id="tx-amount" placeholder="Số tiền (VNĐ)..."><input type="text" id="tx-desc" placeholder="Mô tả ngắn gọn..."><select id="tx-campaign-select"><option value="">-- Quỹ chung --</option></select><div class="modal-actions"><button id="btn-cancel-tx" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-tx" class="btn btn-success btn-3d">Xác nhận</button></div></div></div>
     <div id="view-profile-modal" class="modal hidden"><div class="modal-content" style="text-align: center;"><h3 style="margin-bottom: 15px;">👀 Hồ sơ</h3><img id="view-profile-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px; border: 3px solid #4776E6;"><h2 id="view-profile-name" style="font-size: 20px; color: #1e293b;">Tên</h2><p style="color: gray; font-size: 14px; margin-bottom: 15px;">📞 <span id="view-profile-phone">SĐT</span></p><div style="background: #f8fafc; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 15px;"><p>🏠 <b>Địa chỉ:</b> <span id="view-profile-address">...</span></p><p style="margin-top: 8px;">👤 <b>Người mời:</b> <span id="view-profile-inviter">...</span></p></div><button id="btn-close-view-profile" class="btn btn-secondary btn-3d">Đóng</button></div></div>
     <div id="filter-modal" class="modal hidden"><div class="modal-content" style="max-height: 85vh;"><h3 style="text-align: center; margin-bottom: 10px;">🔍 Tra cứu</h3><div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;"><select id="filter-type"><option value="all">Tất cả</option><option value="income">Chỉ Thu ➕</option><option value="expense">Chỉ Chi ➖</option></select><select id="filter-member"><option value="all">Mọi thành viên</option></select></div><div style="background: #f8f9fa; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center; border: 1px solid #ddd; margin-bottom: 10px;">Tổng: <span id="filter-total-amount" style="font-size: 18px;">0</span> ₫</div><div style="overflow-y: auto; max-height: 40vh;"><ul id="filter-results-list" class="transaction-list"></ul></div><div class="modal-actions" style="margin-top: 10px;"><button id="btn-close-filter" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
     <div id="noti-modal" class="modal hidden"><div class="modal-content" style="max-height: 80vh;"><h3 style="text-align: center; margin-bottom: 10px;">🔔 Thông báo</h3><div id="noti-list" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 50vh;"></div><div class="modal-actions"><button id="btn-close-noti" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
-    
-    <!-- CÀI ĐẶT (ĐÃ THÊM NÚT NHƯỜNG QUYỀN VÀO BÊN TRONG JS) -->
     <div id="settings-modal" class="modal hidden"><div class="modal-content"><h3 style="text-align: center; margin-bottom: 10px;">⚙️ Cài đặt</h3><div style="background: #f8fafc; padding: 15px; border-radius: 12px;"><h4 style="margin-bottom: 10px; font-size: 14px; color: #4776E6;">👤 Cá nhân</h4><input type="text" id="edit-profile-name" placeholder="Họ và tên..."><input type="text" id="edit-profile-address" placeholder="Địa chỉ..."><input type="text" id="edit-profile-avatar" placeholder="Link ảnh (tùy chọn)"><button id="btn-submit-profile" class="btn btn-primary btn-3d" style="width: 100%; margin-top: 10px;">Lưu Thay Đổi</button></div><div id="settings-section-admin" class="hidden" style="background: #FFFBEB; padding: 15px; border-radius: 12px; border-left: 4px solid #F59E0B; margin-top: 10px;"><h4 style="margin-bottom: 10px; font-size: 14px; color: #D97706;">👑 Quản trị</h4><div id="admin-actions-container" style="display: flex; flex-direction: column; gap: 10px;"></div></div><div class="modal-actions"><button id="btn-cancel-settings" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
 
     <script type="module" src="app.js"></script>
