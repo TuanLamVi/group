@@ -20,7 +20,7 @@ const viewProfileModal = document.getElementById('view-profile-modal'); const an
 
 // State Variables
 let currentUser = null; let currentGroupId = null; let currentGroupData = null; let userRole = 'member'; let isManager = false; let txType = "";
-let unsubUser = null; let unsubGroup = null; let unsubCampaigns = null; let unsubTx = null; let unsubNoti = null; let unsubAnno = null;
+let unsubUser = null; let unsubGroups = null; let unsubGroup = null; let unsubCampaigns = null; let unsubTx = null; let unsubNoti = null; let unsubAnno = null;
 
 // Pagination
 let cachedTransactions = []; let approvedTransactions = []; let currentTxPage = 1; const TX_PER_PAGE = 5; 
@@ -79,7 +79,7 @@ function loginSuccess(phone) {
     });
     loadUserGroups(phone); 
 }
-document.getElementById('btn-logout').addEventListener('click', () => { if (!confirm("Đăng xuất?")) return; localStorage.removeItem('userPhone'); currentUser = null; currentGroupId = null; if(unsubUser) unsubUser(); if(unsubGroup) unsubGroup(); if(unsubAnno) unsubAnno(); if(unsubNoti) unsubNoti(); if(unsubTx) unsubTx(); if(unsubCampaigns) unsubCampaigns(); dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); });
+document.getElementById('btn-logout').addEventListener('click', () => { if (!confirm("Đăng xuất?")) return; localStorage.removeItem('userPhone'); currentUser = null; currentGroupId = null; if(unsubUser) unsubUser(); if(unsubGroups) unsubGroups(); if(unsubGroup) unsubGroup(); if(unsubAnno) unsubAnno(); if(unsubNoti) unsubNoti(); if(unsubTx) unsubTx(); if(unsubCampaigns) unsubCampaigns(); dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); });
 
 // ================= TƯƠNG TÁC FACEBOOK (DÙNG CHUNG) =================
 function renderInteractionsHTML(docId, data, isAnno = false) {
@@ -116,6 +116,7 @@ document.getElementById('btn-open-anno-modal').addEventListener('click', () => {
 });
 document.getElementById('btn-cancel-anno').addEventListener('click', () => annoModal.classList.add('hidden'));
 
+// SỰ KIỆN GỬI BẢN TIN (ĐÃ FIX LỖI)
 document.getElementById('btn-submit-anno').addEventListener('click', async () => {
     const title = document.getElementById('anno-title-input').value.trim(); const content = document.getElementById('anno-content-input').value.trim(); const id = document.getElementById('anno-id').value;
     if(!title || !content) return alert("Vui lòng nhập đủ Tiêu đề và Nội dung!");
@@ -123,9 +124,20 @@ document.getElementById('btn-submit-anno').addEventListener('click', async () =>
         if(id) { 
             await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { title, content }); 
         } else { 
+            // Lưu bản tin mới
             const newAnnoRef = await addDoc(collection(db, "groups", currentGroupId, "announcements"), { title, content, createdBy: currentUser.name, creatorPhone: currentUser.phone, reactions: {}, comments: [], createdAt: serverTimestamp() }); 
-            // Cập nhật ID tin mới nhất vào nhóm để báo đỏ ngoài màn hình chính
+            
+            // LƯU ID BẢN TIN VÀO NHÓM ĐỂ KÍCH HOẠT NHÃN "🔴 TIN MỚI" NGOÀI TRANG CHỦ
             await updateDoc(doc(db, "groups", currentGroupId), { lastAnnoId: newAnnoRef.id });
+            
+            // GỬI THÔNG BÁO VÀO QUẢ CHUÔNG CHO TẤT CẢ THÀNH VIÊN
+            if (currentGroupData && currentGroupData.members) {
+                currentGroupData.members.forEach(memberPhone => {
+                    if (memberPhone !== currentUser.phone) {
+                        sendNotification(memberPhone, "📢 Bảng tin mới", `Nhóm ${currentGroupData.name} vừa có thông báo: ${title}`, currentGroupId);
+                    }
+                });
+            }
         }
         annoModal.classList.add('hidden'); viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;
     } catch(e) { alert("Lỗi: " + e.message); }
@@ -174,24 +186,37 @@ function renderAnnouncements() {
 document.getElementById('btn-anno-prev').addEventListener('click', () => { if(currentAnnoPage > 1) { currentAnnoPage--; renderAnnouncements(); }});
 document.getElementById('btn-anno-next').addEventListener('click', () => { if(currentAnnoPage < Math.ceil(groupAnnouncements.length/ANNO_PER_PAGE)) { currentAnnoPage++; renderAnnouncements(); }});
 
-// ================= QUẢN LÝ NHÓM & LISTENERS CHÍNH =================
+// ================= HIỂN THỊ DANH SÁCH NHÓM & NHÃN ĐỎ =================
 function loadUserGroups(phone) { 
-    onSnapshot(query(collection(db, "groups"), where("members", "array-contains", phone)), (snapshot) => { 
+    if(unsubGroups) unsubGroups();
+    unsubGroups = onSnapshot(query(collection(db, "groups"), where("members", "array-contains", phone)), (snapshot) => { 
         const list = document.getElementById('group-list'); list.innerHTML = ''; 
         if(snapshot.empty) return list.innerHTML = '<p style="text-align:center; color:gray;">Chưa tham gia nhóm nào.</p>';
+        
+        // Đọc danh sách ID bản tin đã xem
         const readList = JSON.parse(localStorage.getItem(`readAnnos_${phone}`) || '[]');
         
         snapshot.forEach((docSnap) => { 
             const data = docSnap.data(); 
             let roleHtml = (data.ownerId === phone) ? '<span class="role-badge role-owner">👑 Trưởng nhóm</span>' : (data.deputies && data.deputies.includes(phone)) ? '<span class="role-badge role-deputy">⭐ Phó nhóm</span>' : '<span class="role-badge role-member">👥 Thành viên</span>'; 
+            
+            // Nếu có lastAnnoId và người dùng chưa lưu vào readList -> Hiện nhãn đỏ
             let badgeNewHtml = (data.lastAnnoId && !readList.includes(data.lastAnnoId)) ? `<span class="group-badge-new">🔴 Tin mới</span>` : '';
+            
             list.innerHTML += `<div class="group-item-card" onclick="window.enterGroup('${docSnap.id}')">${badgeNewHtml}<div class="group-item-name">${data.name}</div>${roleHtml}<div class="group-item-balance">Số dư: <b>${(data.balance || 0).toLocaleString()} ₫</b></div></div>`; 
         }); 
     }); 
 }
 document.getElementById('btn-create-group').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Nhóm", "", "Tên nhóm..."); if (!name) return; await addDoc(collection(db, "groups"), { name, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); });
 window.enterGroup = (groupId) => { currentGroupId = groupId; dashboardScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); initRealtimeListeners(); };
-document.getElementById('btn-back-dashboard').addEventListener('click', () => { if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); if(unsubAnno) unsubAnno(); currentGroupId = null; currentGroupData = null; mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden'); });
+document.getElementById('btn-back-dashboard').addEventListener('click', () => { 
+    if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); if(unsubAnno) unsubAnno(); 
+    currentGroupId = null; currentGroupData = null; 
+    mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden'); 
+    
+    // Khởi chạy lại để ẩn nhãn đỏ ngay lập tức nếu vừa đọc xong
+    loadUserGroups(currentUser.phone);
+});
 
 document.getElementById('btn-edit-group-name').addEventListener('click', async () => {
     const newName = await window.customPrompt("Sửa tên nhóm", "Nhập tên mới cho nhóm của bạn", currentGroupData.name);
