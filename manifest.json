@@ -1,7 +1,7 @@
 {
-  "name": "Điều Hành Quỹ & Công Việc",
+  "name": "MY GROUP",
   "short_name": "Quỹ Nhóm",
-  "description": "Ứng dụng quản lý cộng đồng, tài chính và công việc",
+  "description": "Ứng dụng nhóm cộng đồng, tài chính và công việc",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f7f9fc",
