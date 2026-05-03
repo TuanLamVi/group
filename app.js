@@ -81,7 +81,7 @@ function loginSuccess(phone) {
 }
 document.getElementById('btn-logout').addEventListener('click', () => { if (!confirm("Đăng xuất?")) return; localStorage.removeItem('userPhone'); currentUser = null; currentGroupId = null; if(unsubUser) unsubUser(); if(unsubGroup) unsubGroup(); if(unsubAnno) unsubAnno(); if(unsubNoti) unsubNoti(); if(unsubTx) unsubTx(); if(unsubCampaigns) unsubCampaigns(); dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden'); });
 
-// ================= TƯƠNG TÁC FACEBOOK =================
+// ================= TƯƠNG TÁC FACEBOOK (DÙNG CHUNG) =================
 function renderInteractionsHTML(docId, data, isAnno = false) {
     const reactions = data.reactions || {}; const comments = data.comments || [];
     let totalReacts = Object.keys(reactions).length; let uniqueEmojis = [...new Set(Object.values(reactions))].slice(0, 3).join('');
@@ -105,7 +105,7 @@ function renderInteractionsHTML(docId, data, isAnno = false) {
 }
 window.toggleComments = (id) => { const el = document.getElementById(`comments-${id}`); if(el) el.classList.toggle('hidden'); };
 
-// ================= BẢNG TIN (ANNOUNCEMENTS) CÓ TƯƠNG TÁC =================
+// ================= BẢNG TIN (ANNOUNCEMENTS) KIỂU BÀI BÁO =================
 function isAnnoRead(id) { const readList = JSON.parse(localStorage.getItem(`readAnnos_${currentUser.phone}`) || '[]'); return readList.includes(id); }
 function markAnnoRead(id) { const readList = JSON.parse(localStorage.getItem(`readAnnos_${currentUser.phone}`) || '[]'); if (!readList.includes(id)) { readList.push(id); localStorage.setItem(`readAnnos_${currentUser.phone}`, JSON.stringify(readList)); } }
 
@@ -120,8 +120,13 @@ document.getElementById('btn-submit-anno').addEventListener('click', async () =>
     const title = document.getElementById('anno-title-input').value.trim(); const content = document.getElementById('anno-content-input').value.trim(); const id = document.getElementById('anno-id').value;
     if(!title || !content) return alert("Vui lòng nhập đủ Tiêu đề và Nội dung!");
     try {
-        if(id) { await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { title, content }); } 
-        else { await addDoc(collection(db, "groups", currentGroupId, "announcements"), { title, content, createdBy: currentUser.name, creatorPhone: currentUser.phone, reactions: {}, comments: [], createdAt: serverTimestamp() }); }
+        if(id) { 
+            await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { title, content }); 
+        } else { 
+            const newAnnoRef = await addDoc(collection(db, "groups", currentGroupId, "announcements"), { title, content, createdBy: currentUser.name, creatorPhone: currentUser.phone, reactions: {}, comments: [], createdAt: serverTimestamp() }); 
+            // Cập nhật ID tin mới nhất vào nhóm để báo đỏ ngoài màn hình chính
+            await updateDoc(doc(db, "groups", currentGroupId), { lastAnnoId: newAnnoRef.id });
+        }
         annoModal.classList.add('hidden'); viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;
     } catch(e) { alert("Lỗi: " + e.message); }
 });
@@ -169,7 +174,25 @@ function renderAnnouncements() {
 document.getElementById('btn-anno-prev').addEventListener('click', () => { if(currentAnnoPage > 1) { currentAnnoPage--; renderAnnouncements(); }});
 document.getElementById('btn-anno-next').addEventListener('click', () => { if(currentAnnoPage < Math.ceil(groupAnnouncements.length/ANNO_PER_PAGE)) { currentAnnoPage++; renderAnnouncements(); }});
 
-// ================= SỬA TÊN NHÓM & QUẢN LÝ NHÓM =================
+// ================= QUẢN LÝ NHÓM & LISTENERS CHÍNH =================
+function loadUserGroups(phone) { 
+    onSnapshot(query(collection(db, "groups"), where("members", "array-contains", phone)), (snapshot) => { 
+        const list = document.getElementById('group-list'); list.innerHTML = ''; 
+        if(snapshot.empty) return list.innerHTML = '<p style="text-align:center; color:gray;">Chưa tham gia nhóm nào.</p>';
+        const readList = JSON.parse(localStorage.getItem(`readAnnos_${phone}`) || '[]');
+        
+        snapshot.forEach((docSnap) => { 
+            const data = docSnap.data(); 
+            let roleHtml = (data.ownerId === phone) ? '<span class="role-badge role-owner">👑 Trưởng nhóm</span>' : (data.deputies && data.deputies.includes(phone)) ? '<span class="role-badge role-deputy">⭐ Phó nhóm</span>' : '<span class="role-badge role-member">👥 Thành viên</span>'; 
+            let badgeNewHtml = (data.lastAnnoId && !readList.includes(data.lastAnnoId)) ? `<span class="group-badge-new">🔴 Tin mới</span>` : '';
+            list.innerHTML += `<div class="group-item-card" onclick="window.enterGroup('${docSnap.id}')">${badgeNewHtml}<div class="group-item-name">${data.name}</div>${roleHtml}<div class="group-item-balance">Số dư: <b>${(data.balance || 0).toLocaleString()} ₫</b></div></div>`; 
+        }); 
+    }); 
+}
+document.getElementById('btn-create-group').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Nhóm", "", "Tên nhóm..."); if (!name) return; await addDoc(collection(db, "groups"), { name, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); });
+window.enterGroup = (groupId) => { currentGroupId = groupId; dashboardScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); initRealtimeListeners(); };
+document.getElementById('btn-back-dashboard').addEventListener('click', () => { if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); if(unsubAnno) unsubAnno(); currentGroupId = null; currentGroupData = null; mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden'); });
+
 document.getElementById('btn-edit-group-name').addEventListener('click', async () => {
     const newName = await window.customPrompt("Sửa tên nhóm", "Nhập tên mới cho nhóm của bạn", currentGroupData.name);
     if (newName && newName !== currentGroupData.name) {
@@ -177,11 +200,6 @@ document.getElementById('btn-edit-group-name').addEventListener('click', async (
         sendNotification(currentGroupData.ownerId, "Đổi tên nhóm", `${currentUser.name} đã đổi tên nhóm thành: ${newName}`, currentGroupId);
     }
 });
-
-function loadUserGroups(phone) { onSnapshot(query(collection(db, "groups"), where("members", "array-contains", phone)), (snapshot) => { const list = document.getElementById('group-list'); list.innerHTML = ''; snapshot.forEach((docSnap) => { const data = docSnap.data(); let roleHtml = (data.ownerId === phone) ? '<span class="role-badge role-owner">👑 Trưởng nhóm</span>' : (data.deputies && data.deputies.includes(phone)) ? '<span class="role-badge role-deputy">⭐ Phó nhóm</span>' : '<span class="role-badge role-member">👥 Thành viên</span>'; list.innerHTML += `<div class="group-item-card" onclick="window.enterGroup('${docSnap.id}')"><div class="group-item-name">${data.name}</div>${roleHtml}<div class="group-item-balance">Số dư: <b>${(data.balance || 0).toLocaleString()} ₫</b></div></div>`; }); }); }
-document.getElementById('btn-create-group').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Nhóm", "", "Tên nhóm..."); if (!name) return; await addDoc(collection(db, "groups"), { name, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); });
-window.enterGroup = (groupId) => { currentGroupId = groupId; dashboardScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); initRealtimeListeners(); };
-document.getElementById('btn-back-dashboard').addEventListener('click', () => { if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx(); if(unsubAnno) unsubAnno(); currentGroupId = null; currentGroupData = null; mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden'); });
 
 // ================= CÀI ĐẶT THÀNH VIÊN & NHƯỜNG CHỨC =================
 document.getElementById('btn-edit-profile').addEventListener('click', () => { window.openSettings(currentUser.phone); });
@@ -295,7 +313,7 @@ function renderPaginatedTransactions() {
 document.getElementById('btn-tx-prev-page').addEventListener('click', () => { if (currentTxPage > 1) { currentTxPage--; renderPaginatedTransactions(); } });
 document.getElementById('btn-tx-next-page').addEventListener('click', () => { currentTxPage++; renderPaginatedTransactions(); });
 
-// ================= LẮNG NGHE REALTIME =================
+// ================= LẮNG NGHE REALTIME CHÍNH =================
 function initRealtimeListeners() {
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), async (snap) => {
         if (!snap.exists()) return; currentGroupData = snap.data();
@@ -305,7 +323,6 @@ function initRealtimeListeners() {
         document.getElementById('user-role').innerHTML = `<span class="role-badge role-${userRole}">${userRole==='owner'?'Trưởng':userRole==='deputy'?'Phó':'Thành viên'}</span>`;
         isManager = (userRole === 'owner' || userRole === 'deputy');
         
-        // Hiện nút Sửa tên nhóm cho Quản lý
         document.getElementById('btn-edit-group-name').classList.toggle('hidden', !isManager);
         document.getElementById('btn-open-anno-modal').classList.toggle('hidden', !isManager); 
         document.getElementById('btn-create-campaign').classList.toggle('hidden', !isManager);
@@ -313,10 +330,7 @@ function initRealtimeListeners() {
         const mData = await getUsersData(currentGroupData.members); cachedGroupMembersArray = currentGroupData.members.map(p => ({ phone:p, ...mData[p] })); renderMemberList();
         
         pendingMembersArr = (currentGroupData.pendingInvites || []).map(inv => ({ type: 'member_invite', data: inv }));
-        // Thêm yêu cầu nhường chức vào Bảng chờ duyệt nếu có
-        if (currentGroupData.pendingOwner === currentUser.phone) {
-            pendingMembersArr.push({ type: 'ownership_transfer', data: { from: currentGroupData.ownerId } });
-        }
+        if (currentGroupData.pendingOwner === currentUser.phone) { pendingMembersArr.push({ type: 'ownership_transfer', data: { from: currentGroupData.ownerId } }); }
         renderUnifiedPendingList();
     });
     
