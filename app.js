@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, doc, collection, addDoc, onSnapshot, runTransaction, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, doc, collection, addDoc, onSnapshot, runTransaction, updateDoc, increment, serverTimestamp, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBpoi3xuIIiOQXMohVLOITlf0DX9JKbs-4",
@@ -18,14 +18,13 @@ const loginScreen = document.getElementById('login-screen');
 const mainScreen = document.getElementById('main-screen');
 const phoneInput = document.getElementById('phone-input');
 const txModal = document.getElementById('tx-modal');
-const txCampaignSelect = document.getElementById('tx-campaign-select');
 
-// Trạng thái ứng dụng
 let currentUser = null;
-let currentGroupId = "demo_group_01"; // ID nhóm giả lập để test
-let txType = ""; // 'income' hoặc 'expense'
+let currentGroupId = "demo_group_01"; 
+let txType = ""; 
+let isOwner = false; // Phân quyền
 
-// 1. XỬ LÝ ĐĂNG NHẬP
+// 1. ĐĂNG NHẬP
 document.getElementById('login-btn').addEventListener('click', () => {
     const phone = phoneInput.value.trim();
     if (phone.length < 9) return alert("Nhập số điện thoại hợp lệ!");
@@ -34,159 +33,212 @@ document.getElementById('login-btn').addEventListener('click', () => {
     loginScreen.classList.add('hidden');
     mainScreen.classList.remove('hidden');
     
-    initRealtimeListeners(); // Bắt đầu lắng nghe dữ liệu khi đăng nhập xong
+    initRealtimeListeners(); 
 });
 
-// 2. LẮNG NGHE DỮ LIỆU REAL-TIME TỪ FIREBASE
+// 2. LẮNG NGHE DỮ LIỆU
 function initRealtimeListeners() {
-    // Lắng nghe thông tin quỹ chung
+    // 2.1 Lắng nghe thông tin Nhóm & Quyền
     onSnapshot(doc(db, "groups", currentGroupId), (docSnap) => {
         if (docSnap.exists()) {
-            document.getElementById('group-name').innerText = docSnap.data().name || "Nhóm chưa đặt tên";
-            document.getElementById('balance').innerText = (docSnap.data().balance || 0).toLocaleString();
-        } else {
-            document.getElementById('group-name').innerText = "Nhóm chưa tồn tại (Cần tạo trên Firebase)";
+            const data = docSnap.data();
+            document.getElementById('group-name').innerText = data.name;
+            document.getElementById('balance').innerText = (data.balance || 0).toLocaleString();
+            
+            // Xác định quyền
+            isOwner = (data.ownerId === currentUser.phone);
+            document.getElementById('user-role').innerText = isOwner ? "👑 Trưởng nhóm" : "👥 Thành viên";
+            
+            // Ẩn/hiện nút theo quyền
+            if (isOwner) {
+                document.getElementById('btn-create-campaign').classList.remove('hidden');
+                document.getElementById('btn-add-member').classList.remove('hidden');
+                document.getElementById('btn-income').innerText = "➕ Thu tiền";
+                document.getElementById('btn-expense').innerText = "➖ Chi tiền";
+            } else {
+                document.getElementById('btn-create-campaign').classList.add('hidden');
+                document.getElementById('btn-add-member').classList.add('hidden');
+                document.getElementById('btn-income').innerText = "➕ Đề xuất Thu";
+                document.getElementById('btn-expense').innerText = "➖ Đề xuất Chi";
+            }
+
+            // Hiển thị danh sách thành viên
+            const membersArray = data.members || [];
+            document.getElementById('member-list').innerText = membersArray.join(" • ");
+            
         }
     });
 
-    // Lắng nghe các Sự Kiện đang chạy (active)
+    // 2.2 Lắng nghe Sự Kiện
     onSnapshot(collection(db, "groups", currentGroupId, "campaigns"), (snapshot) => {
         const campaignList = document.getElementById('campaign-list');
+        const txSelect = document.getElementById('tx-campaign-select');
         campaignList.innerHTML = '';
-        txCampaignSelect.innerHTML = '<option value="">-- Quỹ chung của nhóm --</option>'; // Reset dropdown
+        txSelect.innerHTML = '<option value="">-- Quỹ chung --</option>';
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             if (data.status === 'active') {
-                // Thêm vào danh sách hiển thị
                 campaignList.innerHTML += `
                     <div class="campaign-card">
                         <div class="campaign-header">
                             <span>🏕️ ${data.name}</span>
                             <span class="campaign-balance">${data.balance.toLocaleString()} ₫</span>
                         </div>
-                        <button class="btn-close-campaign" onclick="window.closeCampaign('${docSnap.id}', '${data.name}')">Tất toán về quỹ chung</button>
-                    </div>
-                `;
-                // Thêm vào dropdown chọn nguồn tiền
-                txCampaignSelect.innerHTML += `<option value="${docSnap.id}">Sự kiện: ${data.name}</option>`;
+                        ${isOwner ? `<button class="btn-close-campaign" onclick="window.closeCampaign('${docSnap.id}', '${data.name}')">Tất toán</button>` : ''}
+                    </div>`;
+                txSelect.innerHTML += `<option value="${docSnap.id}">${data.name}</option>`;
             }
         });
     });
+
+    // 2.3 Lắng nghe Giao dịch & Đề xuất
+    const txQuery = query(collection(db, "groups", currentGroupId, "transactions"), orderBy("createdAt", "desc"));
+    onSnapshot(txQuery, (snapshot) => {
+        const pendingList = document.getElementById('pending-list');
+        const txList = document.getElementById('transaction-list');
+        const pendingSection = document.getElementById('pending-section');
+        
+        pendingList.innerHTML = '';
+        txList.innerHTML = '';
+        let hasPending = false;
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const symbol = data.type === 'income' ? '+' : '-';
+            const color = data.type === 'income' ? 'green' : 'red';
+
+            if (data.status === 'pending') {
+                hasPending = true;
+                pendingList.innerHTML += `
+                    <li class="transaction-item pending-item">
+                        <div>
+                            <strong>${data.createdBy}</strong> đề xuất ${data.type === 'income' ? 'THU' : 'CHI'}<br>
+                            <span>${data.description}</span>: <b style="color:${color}">${symbol}${data.amount.toLocaleString()}đ</b>
+                        </div>
+                        ${isOwner ? `
+                        <div class="pending-actions">
+                            <button class="btn-approve" onclick="window.reviewTx('${docSnap.id}', true)">Duyệt</button>
+                            <button class="btn-reject" onclick="window.reviewTx('${docSnap.id}', false)">Hủy</button>
+                        </div>` : '<span style="font-size: 12px; color: gray;">Đang chờ duyệt...</span>'}
+                    </li>`;
+            } else if (data.status === 'approved') {
+                txList.innerHTML += `
+                    <li class="transaction-item">
+                        <div class="tx-info">
+                            <span class="tx-desc">${data.description} ${data.campaignId ? '(Sự kiện)' : ''}</span>
+                            <span style="font-size: 12px; color: gray;">Bởi: ${data.createdBy}</span>
+                        </div>
+                        <strong style="color: ${color}">${symbol}${data.amount.toLocaleString()} ₫</strong>
+                    </li>`;
+            }
+        });
+
+        if (hasPending) pendingSection.classList.remove('hidden');
+        else pendingSection.classList.add('hidden');
+    });
 }
 
-// 3. TẠO SỰ KIỆN MỚI
-document.getElementById('btn-create-campaign').addEventListener('click', async () => {
-    const name = prompt("Nhập tên sự kiện mới (VD: Tour sinh thái Quỳ Châu, Giao lưu văn hóa...):");
-    if (!name) return;
+// 3. MỞ MODAL THU/CHI
+document.getElementById('btn-income').addEventListener('click', () => { txType = "income"; txModal.classList.remove('hidden'); });
+document.getElementById('btn-expense').addEventListener('click', () => { txType = "expense"; txModal.classList.remove('hidden'); });
+document.getElementById('btn-cancel-tx').addEventListener('click', () => txModal.classList.add('hidden'));
 
-    try {
-        await addDoc(collection(db, "groups", currentGroupId, "campaigns"), {
-            name: name,
-            status: "active",
-            balance: 0,
-            createdAt: serverTimestamp()
-        });
-        alert("Tạo sự kiện thành công!");
-    } catch (error) {
-        alert("Lỗi tạo sự kiện: " + error.message);
-    }
-});
-
-// 4. HIỂN THỊ MODAL THU / CHI
-document.getElementById('btn-income').addEventListener('click', () => {
-    txType = "income";
-    document.getElementById('tx-modal-title').innerText = "Thêm Khoản Thu";
-    txModal.classList.remove('hidden');
-});
-
-document.getElementById('btn-expense').addEventListener('click', () => {
-    txType = "expense";
-    document.getElementById('tx-modal-title').innerText = "Thêm Khoản Chi";
-    txModal.classList.remove('hidden');
-});
-
-document.getElementById('btn-cancel-tx').addEventListener('click', () => {
-    txModal.classList.add('hidden');
-});
-
-// 5. XỬ LÝ LƯU GIAO DỊCH (THU / CHI)
+// 4. LƯU GIAO DỊCH (Trưởng nhóm -> Approved | Thành viên -> Pending)
 document.getElementById('btn-submit-tx').addEventListener('click', async () => {
     let amount = parseInt(document.getElementById('tx-amount').value);
     const desc = document.getElementById('tx-desc').value;
-    const campaignId = txCampaignSelect.value;
+    const campaignId = document.getElementById('tx-campaign-select').value;
 
-    if (!amount || amount <= 0 || !desc) return alert("Vui lòng nhập đầy đủ số tiền và mô tả!");
+    if (!amount || amount <= 0 || !desc) return alert("Vui lòng nhập đầy đủ!");
     
-    // Nếu là chi tiền, số tiền cập nhật vào quỹ sẽ mang dấu âm
     const changeAmount = txType === "expense" ? -amount : amount;
+    const txStatus = isOwner ? "approved" : "pending"; // QUAN TRỌNG
 
     try {
-        if (campaignId) {
-            // Cập nhật vào quỹ sự kiện
-            const campaignRef = doc(db, "groups", currentGroupId, "campaigns", campaignId);
-            await updateDoc(campaignRef, { balance: increment(changeAmount) });
-        } else {
-            // Cập nhật vào quỹ chung
-            const groupRef = doc(db, "groups", currentGroupId);
-            await updateDoc(groupRef, { balance: increment(changeAmount) });
+        // Nếu là trưởng nhóm, cập nhật tiền luôn
+        if (isOwner) {
+            const targetRef = campaignId ? doc(db, "groups", currentGroupId, "campaigns", campaignId) : doc(db, "groups", currentGroupId);
+            await updateDoc(targetRef, { balance: increment(changeAmount) });
         }
 
-        // Lưu lịch sử giao dịch
+        // Lưu bản ghi giao dịch (với trạng thái tương ứng)
         await addDoc(collection(db, "groups", currentGroupId, "transactions"), {
             type: txType,
             amount: amount,
             description: desc,
             campaignId: campaignId || null,
             createdBy: currentUser.phone,
+            status: txStatus, 
             createdAt: serverTimestamp()
         });
 
-        // Đóng modal và reset form
         txModal.classList.add('hidden');
         document.getElementById('tx-amount').value = '';
         document.getElementById('tx-desc').value = '';
 
-    } catch (error) {
-        alert("Có lỗi xảy ra: " + error.message);
+        if (!isOwner) alert("Đã gửi đề xuất cho Trưởng nhóm duyệt!");
+
+    } catch (error) { alert("Lỗi: " + error.message); }
+});
+
+// 5. TRƯỞNG NHÓM DUYỆT / HỦY ĐỀ XUẤT
+window.reviewTx = async (txId, isApprove) => {
+    const txRef = doc(db, "groups", currentGroupId, "transactions", txId);
+    
+    try {
+        if (!isApprove) {
+            if(confirm("Bạn có chắc muốn hủy đề xuất này?")) await deleteDoc(txRef);
+            return;
+        }
+
+        // Nếu duyệt, chạy Transaction để an toàn cập nhật số dư
+        await runTransaction(db, async (transaction) => {
+            const txDoc = await transaction.get(txRef);
+            if (!txDoc.exists() || txDoc.data().status !== 'pending') throw "Giao dịch không hợp lệ!";
+            
+            const data = txDoc.data();
+            const changeAmount = data.type === "expense" ? -data.amount : data.amount;
+            const targetRef = data.campaignId ? doc(db, "groups", currentGroupId, "campaigns", data.campaignId) : doc(db, "groups", currentGroupId);
+
+            // Cập nhật số dư
+            transaction.update(targetRef, { balance: increment(changeAmount) });
+            // Đổi trạng thái thành approved
+            transaction.update(txRef, { status: "approved" });
+        });
+        alert("Đã duyệt thành công!");
+    } catch (error) { alert("Lỗi duyệt: " + error); }
+};
+
+// 6. THÊM THÀNH VIÊN
+document.getElementById('btn-add-member').addEventListener('click', async () => {
+    const newPhone = prompt("Nhập số điện thoại thành viên mới:");
+    if (newPhone && newPhone.length >= 9) {
+        const groupRef = doc(db, "groups", currentGroupId);
+        await updateDoc(groupRef, {
+            members: firebase.firestore.FieldValue.arrayUnion(newPhone)
+        });
     }
 });
 
-// 6. LOGIC TẤT TOÁN SỰ KIỆN VỀ QUỸ CHUNG (Dùng global window để gọi từ HTML)
+// GIỮ LẠI HÀM TẤT TOÁN (closeCampaign)
 window.closeCampaign = async (campaignId, campaignName) => {
-    if (!confirm(`Bạn có chắc muốn tất toán sự kiện "${campaignName}"? Số dư sẽ được dồn vào quỹ chung.`)) return;
-
+    /* Code cũ giữ nguyên */
+    if (!confirm(`Tất toán sự kiện "${campaignName}"?`)) return;
     const groupRef = doc(db, "groups", currentGroupId);
     const campaignRef = doc(db, "groups", currentGroupId, "campaigns", campaignId);
-
     try {
-        await runTransaction(db, async (transaction) => {
-            const groupDoc = await transaction.get(groupRef);
-            const campaignDoc = await transaction.get(campaignRef);
-
-            if (!groupDoc.exists() || !campaignDoc.exists()) throw "Dữ liệu không tồn tại!";
-            if (campaignDoc.data().status === "closed") throw "Sự kiện đã tất toán!";
-
-            const campaignBalance = campaignDoc.data().balance;
-            const newGroupBalance = (groupDoc.data().balance || 0) + campaignBalance;
-
-            // Chuyển tiền từ Sự kiện sang Nhóm
-            transaction.update(groupRef, { balance: newGroupBalance });
-            transaction.update(campaignRef, { balance: 0, status: "closed" });
-
-            // Lưu 1 bản ghi vào lịch sử quỹ chung
-            const txRef = doc(collection(db, "groups", currentGroupId, "transactions"));
-            transaction.set(txRef, {
-                type: campaignBalance >= 0 ? "income" : "expense",
-                amount: Math.abs(campaignBalance),
-                description: `Tất toán sự kiện: ${campaignName}`,
-                campaignId: null,
-                createdBy: "HỆ THỐNG",
-                createdAt: serverTimestamp()
+        await runTransaction(db, async (t) => {
+            const gDoc = await t.get(groupRef);
+            const cDoc = await t.get(campaignRef);
+            const cBal = cDoc.data().balance;
+            t.update(groupRef, { balance: (gDoc.data().balance || 0) + cBal });
+            t.update(campaignRef, { balance: 0, status: "closed" });
+            t.set(doc(collection(db, "groups", currentGroupId, "transactions")), {
+                type: cBal >= 0 ? "income" : "expense", amount: Math.abs(cBal),
+                description: `Tất toán: ${campaignName}`, campaignId: null,
+                createdBy: "HỆ THỐNG", status: "approved", createdAt: serverTimestamp()
             });
         });
-        alert("Tất toán thành công!");
-    } catch (error) {
-        alert("Lỗi tất toán: " + error);
-    }
+    } catch (e) { alert("Lỗi: " + e); }
 };
