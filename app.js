@@ -83,7 +83,6 @@ function loginSuccess(phone) {
             document.getElementById('user-name-display').innerText = currentUser.name; document.getElementById('user-phone-display').innerText = currentUser.phone;
         }
     });
-    
     if(unsubNoti) unsubNoti();
     unsubNoti = onSnapshot(query(collection(db, "users", phone, "notifications"), orderBy("createdAt", "desc")), (snapshot) => {
         const notiList = document.getElementById('noti-list'); const notiBadge = document.getElementById('noti-badge');
@@ -200,11 +199,14 @@ function renderMemberList() {
     });
 }
 
-// ================= 4. HIỂN THỊ GIAO DỊCH & BÌNH LUẬN =================
-window.toggleTxComments = (txId) => {
-    const el = document.getElementById(`comments-${txId}`);
-    if(el) el.classList.toggle('hidden');
+// ================= 4. HIỂN THỊ GIAO DỊCH & BÌNH LUẬN KIỂU FACEBOOK =================
+const FB_EMOJIS = {
+    '👍': { text: 'Thích', color: '#056BF0' }, '❤️': { text: 'Yêu thích', color: '#F33E58' },
+    '🥰': { text: 'Thương', color: '#F7B125' }, '😂': { text: 'Haha', color: '#F7B125' },
+    '😮': { text: 'Wow', color: '#F7B125' }, '😢': { text: 'Buồn', color: '#F7B125' }, '😡': { text: 'Phẫn nộ', color: '#E9710F' }
 };
+
+window.toggleTxComments = (txId) => { const el = document.getElementById(`comments-${txId}`); if(el) el.classList.toggle('hidden'); };
 
 window.reactToTx = async (txId, emoji) => {
     try {
@@ -222,9 +224,7 @@ window.submitComment = async (txId) => {
     const text = input.value.trim(); if(!text) return;
     try {
         const txRef = doc(db, "groups", currentGroupId, "transactions", txId);
-        await updateDoc(txRef, {
-            comments: arrayUnion({ phone: currentUser.phone, name: currentUser.name, text: text, time: Date.now() })
-        });
+        await updateDoc(txRef, { comments: arrayUnion({ phone: currentUser.phone, name: currentUser.name, text: text, time: Date.now() }) });
         input.value = '';
     } catch(e) { console.error(e); }
 };
@@ -233,14 +233,38 @@ function renderTransaction(data, docId, isPending) {
     const symbol = data.type === 'income' ? '+' : '-'; const color = data.type === 'income' ? '#10B981' : '#EF4444'; 
     const reactions = data.reactions || {}; const comments = data.comments || [];
     
-    // Gom nhóm cảm xúc
-    let reactionHtml = '';
-    const emojiCounts = {}; Object.values(reactions).forEach(e => emojiCounts[e] = (emojiCounts[e] || 0) + 1);
+    // Xử lý thống kê (Ví dụ: 👍❤️ 3)
+    let totalReacts = Object.keys(reactions).length;
+    let uniqueEmojis = [...new Set(Object.values(reactions))].slice(0, 3).join('');
+    let statsHtml = '';
+    if (totalReacts > 0 || comments.length > 0) {
+        statsHtml = `<div class="tx-stats">
+            <div class="tx-stats-left">${totalReacts > 0 ? `${uniqueEmojis} ${totalReacts}` : ''}</div>
+            ${comments.length > 0 ? `<div class="tx-stats-right" onclick="window.toggleTxComments('${docId}')">${comments.length} bình luận</div>` : '<div></div>'}
+        </div>`;
+    }
+
+    // Xử lý nút Thích
     const myReaction = reactions[currentUser.phone];
-    
-    const renderReactBtn = (emoji) => `<button class="reaction-btn ${myReaction === emoji ? 'active' : ''}" onclick="window.reactToTx('${docId}', '${emoji}')">${emoji} ${emojiCounts[emoji] || ''}</button>`;
-    
-    let commentsHtml = comments.map(c => `<div class="comment-item"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff" class="comment-avatar"><div class="comment-bubble"><b>${c.name}:</b> ${c.text}</div></div>`).join('');
+    let btnText = '👍 Thích'; let btnColor = '#65676B';
+    if (myReaction && FB_EMOJIS[myReaction]) {
+        btnText = `${myReaction} ${FB_EMOJIS[myReaction].text}`;
+        btnColor = FB_EMOJIS[myReaction].color;
+    }
+
+    // Khay biểu tượng (Popover)
+    let popoverHtml = `<div class="reaction-popover">`;
+    Object.keys(FB_EMOJIS).forEach(emj => {
+        popoverHtml += `<span class="react-icon" onclick="event.stopPropagation(); window.reactToTx('${docId}', '${emj}')">${emj}</span>`;
+    });
+    popoverHtml += `</div>`;
+
+    // Render Bình luận
+    let commentsHtml = comments.map(c => `
+        <div class="comment-item">
+            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff" class="comment-avatar">
+            <div class="comment-bubble"><b>${c.name}</b><span>${c.text}</span></div>
+        </div>`).join('');
 
     if (isPending) {
         return `<li class="transaction-item pending-item"><div class="tx-top"><div><strong>${data.createdByName}</strong> đề xuất ${data.type === 'income' ? 'THU' : 'CHI'}<br><span>${data.description}</span>: <b style="color:${color}">${symbol}${data.amount.toLocaleString()}đ</b></div>${isManager ? `<div class="pending-actions"><button class="btn-approve btn-3d" onclick="window.reviewTx('${docId}', true)">Duyệt</button><button class="btn-reject btn-3d" onclick="window.reviewTx('${docId}', false)">Hủy</button></div>` : '<span style="font-size: 12px; color: gray;">Chờ...</span>'}</div></li>`;
@@ -251,10 +275,20 @@ function renderTransaction(data, docId, isPending) {
                 <div class="tx-info"><span class="tx-desc">${data.description}</span><span style="font-size: 12px; color: gray;">Bởi: ${data.createdByName}</span></div>
                 <strong style="color: ${color}; font-size: 18px;">${symbol}${data.amount.toLocaleString()} ₫</strong>
             </div>
+            
             <div class="tx-interactions">
-                <div class="reaction-bar">${renderReactBtn('👍')} ${renderReactBtn('❤️')} ${renderReactBtn('😂')}</div>
-                <button class="reaction-btn" style="margin-left: auto;" onclick="window.toggleTxComments('${docId}')">💬 ${comments.length} Bình luận</button>
+                ${statsHtml}
+                <div class="tx-actions">
+                    <div class="like-wrapper">
+                        <button class="action-btn-fb" style="color: ${btnColor};" onclick="window.reactToTx('${docId}', '${myReaction ? myReaction : '👍'}')">
+                            ${btnText}
+                        </button>
+                        ${popoverHtml}
+                    </div>
+                    <button class="action-btn-fb" onclick="window.toggleTxComments('${docId}')">💬 Bình luận</button>
+                </div>
             </div>
+            
             <div id="comments-${docId}" class="tx-comments-section hidden">
                 ${commentsHtml}
                 <div class="comment-input-area">
@@ -265,7 +299,6 @@ function renderTransaction(data, docId, isPending) {
         </li>`;
     }
 }
-
 
 function initRealtimeListeners() {
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), async (docSnap) => {
@@ -282,25 +315,16 @@ function initRealtimeListeners() {
         cachedGroupMembersArray = currentGroupData.members.map(phone => { return { phone: phone, ...membersDataRaw[phone] }; });
         renderMemberList();
 
-        // RENDER CHỜ DUYỆT THÀNH VIÊN KIỂU MỚI (CÓ NÚT XEM HỒ SƠ)
         const pendingMembersDiv = document.getElementById('pending-members-list'); const pendingSection = document.getElementById('pending-members-section');
         const pendingInvites = currentGroupData.pendingInvites || [];
-        
         if (pendingInvites.length > 0) {
             pendingSection.classList.remove('hidden'); pendingMembersDiv.innerHTML = '';
-            
             for (const invite of pendingInvites) {
                 const pPhone = invite.phone; const inviterPhone = invite.proposedBy;
                 const puInfoArray = await getUsersData([pPhone, inviterPhone]);
                 const puInfo = puInfoArray[pPhone]; const inviterInfo = puInfoArray[inviterPhone];
                 const defaultAvt = `https://ui-avatars.com/api/?name=${encodeURIComponent(puInfo.name)}&background=random&color=fff`;
-                
-                let pAction = isManager ? `
-                    <button class="btn-sm btn-secondary btn-3d" onclick="window.viewUserProfile('${pPhone}', '${inviterInfo.name}')" style="padding:4px 8px;">👀 Xem</button>
-                    <button class="btn-sm btn-success btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', true)" style="padding:4px 8px;">Duyệt</button> 
-                    <button class="btn-sm btn-danger btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', false)" style="padding:4px 8px;">Từ chối</button>
-                ` : `<span style="font-size:12px; color:gray;">Chờ duyệt...</span>`;
-                
+                let pAction = isManager ? `<button class="btn-sm btn-secondary btn-3d" onclick="window.viewUserProfile('${pPhone}', '${inviterInfo.name}')" style="padding:4px 8px;">👀 Xem</button><button class="btn-sm btn-success btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', true)" style="padding:4px 8px;">Duyệt</button> <button class="btn-sm btn-danger btn-3d" onclick="window.approveMember('${pPhone}', '${inviterPhone}', false)" style="padding:4px 8px;">Từ chối</button>` : `<span style="font-size:12px; color:gray;">Chờ duyệt...</span>`;
                 pendingMembersDiv.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid #eee;"><div style="display:flex; align-items:center; gap: 10px;"><img src="${puInfo.avatar || defaultAvt}" style="width:36px; height:36px; border-radius:50%;"><div><div style="font-size:15px; font-weight:bold;">${puInfo.name}</div><div style="font-size:12px; color:gray;">Bởi: ${inviterInfo.name}</div></div></div><div style="display:flex; gap:5px;">${pAction}</div></div>`;
             }
         } else { pendingSection.classList.add('hidden'); }
@@ -312,7 +336,6 @@ function initRealtimeListeners() {
     unsubTx = onSnapshot(txQuery, (snapshot) => { 
         const pendingList = document.getElementById('pending-list'); const txList = document.getElementById('transaction-list'); const pendingSection = document.getElementById('pending-section'); 
         pendingList.innerHTML = ''; txList.innerHTML = ''; let hasPending = false; cachedTransactions = [];
-
         snapshot.forEach((docSnap) => { 
             const data = docSnap.data(); cachedTransactions.push({ id: docSnap.id, ...data });
             if (data.status === 'pending') { hasPending = true; pendingList.innerHTML += renderTransaction(data, docSnap.id, true); } 
@@ -324,16 +347,11 @@ function initRealtimeListeners() {
 }
 
 // ================= 5. TÍNH NĂNG KIỂM DUYỆT THÀNH VIÊN MỚI =================
-
-// Xem hồ sơ Popup
 window.viewUserProfile = async (phone, inviterName) => {
-    const dataObj = await getUsersData([phone]);
-    const user = dataObj[phone];
+    const dataObj = await getUsersData([phone]); const user = dataObj[phone];
     document.getElementById('view-profile-avatar').src = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random&color=fff`;
-    document.getElementById('view-profile-name').innerText = user.name;
-    document.getElementById('view-profile-phone').innerText = user.phone;
-    document.getElementById('view-profile-address').innerText = user.address || 'Chưa cập nhật';
-    document.getElementById('view-profile-inviter').innerText = inviterName;
+    document.getElementById('view-profile-name').innerText = user.name; document.getElementById('view-profile-phone').innerText = user.phone;
+    document.getElementById('view-profile-address').innerText = user.address || 'Chưa cập nhật'; document.getElementById('view-profile-inviter').innerText = inviterName;
     viewProfileModal.classList.remove('hidden');
 };
 document.getElementById('btn-close-view-profile').addEventListener('click', () => viewProfileModal.classList.add('hidden'));
@@ -343,47 +361,23 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
     if (!newPhone || newPhone.length < 9) return; 
     const userSnap = await getDoc(doc(db, "users", newPhone)); if(!userSnap.exists()) return alert("SĐT này chưa đăng ký app!"); 
     try { 
-        const groupRef = doc(db, "groups", currentGroupId); 
-        const groupData = (await getDoc(groupRef)).data();
-        
-        // Loại bỏ object Invite cũ nếu có để tránh trùng lặp
-        const currentInvites = groupData.pendingInvites || [];
-        const newInvites = currentInvites.filter(inv => inv.phone !== newPhone);
-        
-        if (isManager) { 
-            await updateDoc(groupRef, { members: arrayUnion(newPhone), pendingInvites: newInvites }); 
-            sendNotification(newPhone, "Bạn đã được thêm vào nhóm", `Quản trị viên vừa thêm bạn vào nhóm ${groupData.name}`, currentGroupId);
-        } else { 
-            newInvites.push({ phone: newPhone, proposedBy: currentUser.phone });
-            await updateDoc(groupRef, { pendingInvites: newInvites }); 
-            alert("Đã gửi đề xuất thêm thành viên!"); 
-            const managers = [groupData.ownerId, ...(groupData.deputies || [])];
-            managers.forEach(mgr => sendNotification(mgr, "Đề xuất thành viên", `${currentUser.name} mời SĐT ${newPhone} vào nhóm.`, currentGroupId));
-        } 
+        const groupRef = doc(db, "groups", currentGroupId); const groupData = (await getDoc(groupRef)).data();
+        const currentInvites = groupData.pendingInvites || []; const newInvites = currentInvites.filter(inv => inv.phone !== newPhone);
+        if (isManager) { await updateDoc(groupRef, { members: arrayUnion(newPhone), pendingInvites: newInvites }); sendNotification(newPhone, "Bạn đã được thêm vào nhóm", `Quản trị viên vừa thêm bạn vào nhóm ${groupData.name}`, currentGroupId); } 
+        else { newInvites.push({ phone: newPhone, proposedBy: currentUser.phone }); await updateDoc(groupRef, { pendingInvites: newInvites }); alert("Đã gửi đề xuất thêm thành viên!"); const managers = [groupData.ownerId, ...(groupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất thành viên", `${currentUser.name} mời SĐT ${newPhone} vào nhóm.`, currentGroupId)); } 
     } catch(e) { alert("Lỗi: " + e.message); } 
 });
 
 window.approveMember = async (phone, inviterPhone, isApprove) => { 
     try { 
-        const groupRef = doc(db, "groups", currentGroupId);
-        const groupData = (await getDoc(groupRef)).data();
-        const currentInvites = groupData.pendingInvites || [];
-        const newInvites = currentInvites.filter(inv => inv.phone !== phone); // Xóa khỏi danh sách chờ
-
-        if (isApprove) {
-            await updateDoc(groupRef, { members: arrayUnion(phone), pendingInvites: newInvites }); 
-            sendNotification(phone, "Được duyệt vào nhóm", `Bạn đã được duyệt tham gia nhóm ${groupData.name}`, currentGroupId);
-            sendNotification(inviterPhone, "Đề xuất thành công", `Trưởng nhóm đã duyệt người bạn mời (${phone}) vào nhóm.`, currentGroupId);
-        } else {
-            const reason = await window.customPrompt("Từ chối thành viên", "Nhập lý do từ chối...");
-            if (reason === null) return; // Hủy thao tác
-            await updateDoc(groupRef, { pendingInvites: newInvites }); 
-            sendNotification(inviterPhone, "Đề xuất bị từ chối", `Đề xuất mời ${phone} của bạn bị từ chối. Lý do: ${reason || 'Không rõ'}`, currentGroupId);
-        }
+        const groupRef = doc(db, "groups", currentGroupId); const groupData = (await getDoc(groupRef)).data();
+        const currentInvites = groupData.pendingInvites || []; const newInvites = currentInvites.filter(inv => inv.phone !== phone);
+        if (isApprove) { await updateDoc(groupRef, { members: arrayUnion(phone), pendingInvites: newInvites }); sendNotification(phone, "Được duyệt vào nhóm", `Bạn đã được duyệt tham gia nhóm ${groupData.name}`, currentGroupId); sendNotification(inviterPhone, "Đề xuất thành công", `Trưởng nhóm đã duyệt người bạn mời (${phone}) vào nhóm.`, currentGroupId); } 
+        else { const reason = await window.customPrompt("Từ chối thành viên", "Nhập lý do từ chối..."); if (reason === null) return; await updateDoc(groupRef, { pendingInvites: newInvites }); sendNotification(inviterPhone, "Đề xuất bị từ chối", `Đề xuất mời ${phone} của bạn bị từ chối. Lý do: ${reason || 'Không rõ'}`, currentGroupId); }
     } catch (e) { alert("Lỗi: " + e.message); } 
 };
 
-// ================= CÁC THAO TÁC QUỸ GIỮ NGUYÊN BẢN TRƯỚC =================
+// ================= CÁC THAO TÁC QUỸ GIỮ NGUYÊN =================
 document.getElementById('btn-open-filter').addEventListener('click', () => { const memberSelect = document.getElementById('filter-member'); memberSelect.innerHTML = '<option value="all">Mọi thành viên</option>'; cachedGroupMembersArray.forEach(u => { memberSelect.innerHTML += `<option value="${u.phone}">${u.name} (${u.phone})</option>`; }); document.getElementById('filter-type').value = 'all'; document.getElementById('filter-member').value = 'all'; document.getElementById('filter-modal').classList.remove('hidden'); applyFilter(); });
 document.getElementById('btn-close-filter').addEventListener('click', () => { document.getElementById('filter-modal').classList.add('hidden'); }); document.getElementById('filter-type').addEventListener('change', applyFilter); document.getElementById('filter-member').addEventListener('change', applyFilter);
 function applyFilter() { const type = document.getElementById('filter-type').value; const memberPhone = document.getElementById('filter-member').value; let filtered = cachedTransactions.filter(tx => tx.status === 'approved'); if (type !== 'all') filtered = filtered.filter(tx => tx.type === type); if (memberPhone !== 'all') filtered = filtered.filter(tx => tx.creatorPhone === memberPhone); const resultsList = document.getElementById('filter-results-list'); resultsList.innerHTML = ''; let totalAmount = 0; if (filtered.length === 0) { resultsList.innerHTML = '<p style="text-align:center; color:gray; padding:10px;">Không có giao dịch nào phù hợp.</p>'; } else { filtered.forEach(tx => { const symbol = tx.type === 'income' ? '+' : '-'; const color = tx.type === 'income' ? '#10B981' : '#EF4444'; if (type === 'all') totalAmount += (tx.type === 'income' ? tx.amount : -tx.amount); else totalAmount += tx.amount; resultsList.innerHTML += `<li class="transaction-item"><div class="tx-top"><div class="tx-info"><span class="tx-desc">${tx.description}</span><span style="font-size: 12px; color: gray;">Bởi: ${tx.createdByName}</span></div><strong style="color: ${color};">${symbol}${tx.amount.toLocaleString()} ₫</strong></div></li>`; }); } const totalEl = document.getElementById('filter-total-amount'); totalEl.innerText = Math.abs(totalAmount).toLocaleString(); if (type === 'all') totalEl.style.color = totalAmount >= 0 ? '#10B981' : '#EF4444'; else if (type === 'income') totalEl.style.color = '#10B981'; else totalEl.style.color = '#EF4444'; }
