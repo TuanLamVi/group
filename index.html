@@ -12,11 +12,10 @@
         <div id="auth-screen" class="screen">
             <div class="card login-card">
                 <h2 id="auth-title">Đăng nhập</h2>
-                <p>Quản lý quỹ nhóm minh bạch</p>
                 <div id="login-form">
                     <input type="tel" id="login-phone" placeholder="Số điện thoại...">
                     <input type="password" id="login-password" placeholder="Mật khẩu...">
-                    <button id="btn-login-submit" class="btn btn-primary btn-3d">Vào ứng dụng</button>
+                    <button id="btn-login-submit" class="btn btn-primary btn-3d">Đăng nhập</button>
                     <p style="margin-top: 15px; font-size: 14px;">
                         Chưa có tài khoản? <a href="#" id="link-to-register" style="color: #007bff;">Đăng ký</a> | 
                         <a href="#" id="link-forgot-pwd" style="color: #dc3545; font-weight: bold;">Quên mật khẩu?</a>
@@ -27,7 +26,7 @@
                     <input type="tel" id="reg-phone" placeholder="Số điện thoại...">
                     <input type="text" id="reg-address" placeholder="Địa chỉ thường trú...">
                     <input type="password" id="reg-password" placeholder="Mật khẩu (ít nhất 8 ký tự)...">
-                    <input type="number" id="reg-pin" placeholder="Thiết lập mã PIN 4 số..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
+                    <input type="number" id="reg-pin" placeholder="Mã PIN 4 số (bảo mật)..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
                     <button id="btn-register-submit" class="btn btn-success btn-3d">Đăng ký ngay</button>
                     <p style="margin-top: 15px; font-size: 14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color: #007bff;">Đăng nhập</a></p>
                 </div>
@@ -68,12 +67,7 @@
                 <button id="btn-income" class="btn btn-success btn-3d">➕ Thu tiền</button>
                 <button id="btn-expense" class="btn btn-danger btn-3d">➖ Chi tiền</button>
             </div>
-            <div id="pending-section" class="hidden"><ul id="pending-list" class="transaction-list"></ul></div>
-            <div id="pending-members-section" class="hidden"><div id="pending-members-list" class="transaction-list"></div></div>
-            <div class="campaign-section">
-                <div class="section-header"><h3>Quỹ Sự Kiện</h3><button id="btn-create-campaign" class="btn-sm btn-primary btn-3d hidden">➕ Tạo</button></div>
-                <div id="campaign-list" class="campaign-list"></div>
-            </div>
+            
             <div class="campaign-section">
                 <div class="section-header"><h3>Thành viên</h3><button id="btn-add-member" class="btn-sm btn-secondary btn-3d">➕ Mời</button></div>
                 <div style="position: relative; margin-bottom: 10px;"><input type="text" id="search-member-input" placeholder="🔍 Tìm tên hoặc SĐT..." style="padding-left: 35px;"></div>
@@ -84,25 +78,30 @@
                     <button id="btn-next-page" class="btn-sm btn-secondary btn-3d">▶</button>
                 </div>
             </div>
-            <div class="recent-transactions"><h3>Lịch sử</h3><ul id="transaction-list" class="transaction-list"></ul></div>
+            <!-- Lịch sử và Quỹ sự kiện giữ nguyên -->
+            <div id="transaction-history" class="recent-transactions">
+                <h3>Lịch sử quỹ</h3>
+                <ul id="transaction-list" class="transaction-list"></ul>
+            </div>
         </div>
     </div>
 
-    <!-- CÁC MODAL (POPUP) -->
-    <div id="tx-modal" class="modal hidden"><div class="modal-content">
-        <h3>Giao Dịch</h3><input type="number" id="tx-amount" placeholder="Số tiền..."><input type="text" id="tx-desc" placeholder="Mô tả..."><select id="tx-campaign-select"></select>
-        <div class="modal-actions"><button id="btn-cancel-tx" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-tx" class="btn btn-success btn-3d">Xác nhận</button></div>
-    </div></div>
-    <div id="settings-modal" class="modal hidden"><div class="modal-content">
-        <h3>⚙️ Cài đặt</h3><input type="text" id="edit-profile-name" placeholder="Tên..."><input type="text" id="edit-profile-address" placeholder="Địa chỉ..."><input type="text" id="edit-profile-avatar" placeholder="Link ảnh..."><button id="btn-submit-profile" class="btn btn-primary btn-3d">Lưu</button>
-        <div id="settings-section-admin" class="hidden"><hr><div id="admin-actions-container" style="display: flex; gap: 10px; margin-top: 10px;"></div></div>
-        <button id="btn-cancel-settings" class="btn btn-secondary btn-3d" style="margin-top: 10px;">Đóng</button>
-    </div></div>
-    <div id="forgot-password-modal" class="modal hidden"><div class="modal-content">
-        <h3>🔐 Khôi phục mật khẩu</h3><input type="tel" id="forgot-phone" placeholder="Số điện thoại..."><input type="number" id="forgot-pin" placeholder="Mã PIN 4 số..."><input type="password" id="forgot-new-password" placeholder="Mật khẩu mới...">
-        <div class="modal-actions"><button id="btn-cancel-forgot" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-forgot" class="btn btn-primary btn-3d">Xác nhận</button></div>
-    </div></div>
-    <div id="custom-prompt-modal" class="modal hidden"><div class="modal-content"><h3 id="prompt-title"></h3><input type="text" id="prompt-input"><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">OK</button></div></div></div>
+    <!-- MODAL POPUP -->
+    <div id="forgot-password-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>🔐 Khôi phục mật khẩu</h3>
+            <input type="tel" id="forgot-phone" placeholder="Số điện thoại...">
+            <input type="number" id="forgot-pin" placeholder="Mã PIN 4 số..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
+            <input type="password" id="forgot-new-password" placeholder="Mật khẩu mới...">
+            <div class="modal-actions">
+                <button id="btn-cancel-forgot" class="btn btn-secondary btn-3d">Hủy</button>
+                <button id="btn-submit-forgot" class="btn btn-primary btn-3d">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+    <div id="custom-prompt-modal" class="modal hidden">
+        <div class="modal-content"><h3 id="prompt-title"></h3><input type="text" id="prompt-input"><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">OK</button></div></div>
+    </div>
     <script type="module" src="app.js"></script>
 </body>
 </html>
