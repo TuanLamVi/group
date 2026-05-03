@@ -20,11 +20,12 @@
 
         <!-- MÀN HÌNH CHÍNH -->
         <div id="main-screen" class="screen hidden">
-            <!-- Thẻ hiển thị số dư chung -->
+            <!-- Thẻ số dư -->
             <div class="card balance-card">
                 <h3>Nhóm: <span id="group-name">Đang tải...</span></h3>
                 <p class="balance-title">Số dư quỹ chung</p>
                 <h1 class="balance-amount"><span id="balance">0</span> ₫</h1>
+                <p style="font-size: 12px; margin-top: 10px; color: #ffd700;">Vai trò của bạn: <span id="user-role">Đang kiểm tra...</span></p>
             </div>
 
             <!-- Các nút thao tác -->
@@ -33,20 +34,33 @@
                 <button id="btn-expense" class="btn btn-danger">➖ Chi tiền</button>
             </div>
 
-            <!-- Khu vực Quỹ Sự Kiện -->
-            <div class="campaign-section">
-                <div class="section-header">
-                    <h3>Quỹ Sự Kiện Đang Chạy</h3>
-                    <button id="btn-create-campaign" class="btn-sm btn-primary">➕ Tạo sự kiện</button>
-                </div>
-                <div id="campaign-list" class="campaign-list">
-                    <!-- Danh sách sự kiện sẽ hiển thị ở đây -->
-                </div>
+            <!-- KHU VỰC ĐỀ XUẤT CHỜ DUYỆT (Chỉ hiện nếu có) -->
+            <div id="pending-section" class="recent-transactions hidden">
+                <h3 style="color: #dc3545;">⚠️ Đề xuất chờ duyệt</h3>
+                <ul id="pending-list" class="transaction-list"></ul>
             </div>
 
-            <!-- Khu vực hiển thị danh sách giao dịch -->
-            <div class="recent-transactions">
-                <h3>Hoạt động gần đây</h3>
+            <!-- KHU VỰC SỰ KIỆN -->
+            <div class="campaign-section">
+                <div class="section-header">
+                    <h3>Quỹ Sự Kiện</h3>
+                    <button id="btn-create-campaign" class="btn-sm btn-primary hidden">➕ Tạo sự kiện</button>
+                </div>
+                <div id="campaign-list" class="campaign-list"></div>
+            </div>
+
+            <!-- KHU VỰC THÀNH VIÊN -->
+            <div class="campaign-section">
+                <div class="section-header">
+                    <h3>Thành viên nhóm</h3>
+                    <button id="btn-add-member" class="btn-sm btn-secondary hidden">➕ Thêm</button>
+                </div>
+                <div id="member-list" class="transaction-list" style="padding: 10px; background: #fff; border-radius: 8px; font-size: 14px;"></div>
+            </div>
+
+            <!-- LỊCH SỬ GIAO DỊCH -->
+            <div class="recent-transactions" style="margin-top: 20px;">
+                <h3>Lịch sử quỹ</h3>
                 <ul id="transaction-list" class="transaction-list"></ul>
             </div>
         </div>
@@ -57,14 +71,11 @@
         <div class="modal-content">
             <h3 id="tx-modal-title">Thêm Giao Dịch</h3>
             <input type="number" id="tx-amount" placeholder="Nhập số tiền (VNĐ)...">
-            <input type="text" id="tx-desc" placeholder="Mô tả (Ví dụ: Thu tiền vé, Mua nước...)">
-            
+            <input type="text" id="tx-desc" placeholder="Mô tả (Ví dụ: Mua nước, Thu vé...)">
             <label for="tx-campaign-select">Nguồn tiền:</label>
             <select id="tx-campaign-select">
                 <option value="">-- Quỹ chung của nhóm --</option>
-                <!-- Các sự kiện đang chạy sẽ được tự động thêm vào đây -->
             </select>
-            
             <div class="modal-actions">
                 <button id="btn-cancel-tx" class="btn btn-secondary">Hủy</button>
                 <button id="btn-submit-tx" class="btn btn-success">Xác nhận</button>
