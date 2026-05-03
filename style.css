@@ -1,25 +1,99 @@
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-body { background-color: #f4f6f8; display: flex; justify-content: center; }
-.app-container { width: 100%; max-width: 480px; min-height: 100vh; background: #fff; padding: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background-color: #f4f6f8; color: #333; display: flex; justify-content: center; }
+.app-container { width: 100%; max-width: 480px; min-height: 100vh; background-color: #fff; padding: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
 .hidden { display: none !important; }
-.card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
-.btn { border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.1s; }
-.btn-3d { box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
-.btn-3d:active { transform: translateY(3px); box-shadow: none; }
-.btn-primary { background: #007bff; color: #fff; }
-.btn-success { background: #28a745; color: #fff; }
-.btn-danger { background: #dc3545; color: #fff; }
-.btn-secondary { background: #6c757d; color: #fff; }
-.btn-sm { padding: 6px 12px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; }
-.balance-card { background: linear-gradient(135deg, #1e3c72, #2a5298); color: #fff; text-align: center; }
-.balance-amount { font-size: 32px; margin: 10px 0; }
-.modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:1000; }
-.modal-content { background:#fff; padding:20px; border-radius:16px; width:90%; max-width:400px; }
-input { width:100%; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; font-size:16px; }
-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-.member-item { border-bottom: 1px solid #eee; overflow: hidden; }
-.member-summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 5px; cursor: pointer; }
-.member-details { max-height: 0; opacity: 0; transition: 0.3s ease-out; background: #f9f9f9; padding: 0 15px; }
-.member-details.open { max-height: 500px; opacity: 1; padding: 15px; margin: 5px 0; border-left: 4px solid #007bff; }
-.avatar-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
-.transaction-list { list-style: none; margin-top: 10px; }
+
+.card { background: #ffffff; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.login-card { text-align: center; margin-top: 50px; }
+.login-card input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; transition: 0.2s;}
+.login-card input:focus { border-color: #007bff; box-shadow: 0 0 5px rgba(0,123,255,0.3); }
+
+.balance-card { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; text-align: center; }
+.balance-card h3 { font-size: 16px; opacity: 0.9; margin-bottom: 15px; }
+.balance-amount { font-size: 36px; margin-top: 5px; }
+
+/* NÚT BẤM 3D NỔI BẬT */
+.btn { border: none; padding: 12px 16px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+.btn-sm { padding: 8px 14px; font-size: 14px; border: none; cursor: pointer; }
+.btn-3d {
+    border-radius: 12px;
+    transform: translateY(0);
+    transition: all 0.1s ease;
+    color: white;
+}
+.btn-3d:active { transform: translateY(4px); } /* Hiệu ứng lún xuống */
+
+.btn-primary.btn-3d { background: #007bff; box-shadow: 0 5px 0 #0056b3, 0 6px 10px rgba(0,0,0,0.15); }
+.btn-primary.btn-3d:active { box-shadow: 0 1px 0 #0056b3, 0 2px 5px rgba(0,0,0,0.15); }
+
+.btn-success.btn-3d { background: #28a745; box-shadow: 0 5px 0 #1e7e34, 0 6px 10px rgba(0,0,0,0.15); }
+.btn-success.btn-3d:active { box-shadow: 0 1px 0 #1e7e34, 0 2px 5px rgba(0,0,0,0.15); }
+
+.btn-danger.btn-3d { background: #dc3545; box-shadow: 0 5px 0 #bd2130, 0 6px 10px rgba(0,0,0,0.15); }
+.btn-danger.btn-3d:active { box-shadow: 0 1px 0 #bd2130, 0 2px 5px rgba(0,0,0,0.15); }
+
+.btn-secondary.btn-3d { background: #6c757d; box-shadow: 0 5px 0 #545b62, 0 6px 10px rgba(0,0,0,0.15); }
+.btn-secondary.btn-3d:active { box-shadow: 0 1px 0 #545b62, 0 2px 5px rgba(0,0,0,0.15); }
+
+.action-buttons { display: flex; gap: 15px; margin-bottom: 24px; }
+.transaction-list { list-style: none; }
+.transaction-item { background: #f8f9fa; padding: 12px 16px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; border-left: 4px solid #ccc; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 20px; }
+
+.campaign-card { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.campaign-header { display: flex; justify-content: space-between; font-weight: bold; }
+.campaign-balance { font-size: 18px; color: #d39e00; }
+.btn-close-campaign { background: #ffc107; color: #333; border: none; padding: 8px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #d39e00; transition: 0.1s; }
+.btn-close-campaign:active { transform: translateY(4px); box-shadow: 0 0 0 #d39e00; }
+
+/* POPUP MƯỢT MÀ */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.3s; }
+.modal-content { 
+    background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-content input, .modal-content select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; width: 100%; outline: none; }
+.modal-content input:focus { border-color: #007bff; }
+.modal-actions { display: flex; gap: 10px; margin-top: 5px; }
+
+.pending-actions { display: flex; gap: 5px; margin-top: 8px; }
+.btn-approve { background: #28a745; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.btn-reject { background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.pending-item { background: #fff3cd; border-left: 4px solid #ffc107; }
+
+.group-list { display: flex; flex-direction: column; gap: 15px; }
+.group-item-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; border: 1px solid #eee; border-left: 5px solid #007bff; }
+.group-item-card:hover { transform: scale(1.02); }
+.group-item-name { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+.group-item-balance { font-size: 14px; color: #333; }
+
+.role-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; margin-bottom: 8px; }
+.role-owner { background-color: #ffc107; color: #856404; }
+.role-deputy { background-color: #17a2b8; }
+.role-member { background-color: #6c757d; }
+
+.profile-header { display: flex; flex-direction: column; margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
+.avatar-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #ccc; background-color: #fff; }
+
+.member-item { border-bottom: 1px solid #f1f1f1; overflow: hidden; }
+.member-item:last-child { border-bottom: none; }
+.member-summary { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 5px; border-radius: 8px; transition: 0.2s; }
+.member-summary:hover { background-color: #f1f3f5; }
+
+/* HIỆU ỨNG ACCORDION MƯỢT MÀ */
+.member-details {
+    max-height: 0; opacity: 0; padding: 0 15px; margin: 0;
+    background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Animation mượt */
+}
+.member-details.open {
+    max-height: 400px; /* Chiều cao đủ lớn để chứa nội dung */
+    opacity: 1; padding: 15px; margin: 10px 0;
+}
+
+.contact-actions { display: flex; gap: 10px; margin-top: 12px; }
+.contact-actions a { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 13px; color: white; flex: 1; text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,0.2); transition: 0.1s;}
+.contact-actions a:active { transform: translateY(3px); box-shadow: 0 0 0 transparent; }
+.btn-call { background-color: #28a745; }
+.btn-zalo { background-color: #0068ff; }
