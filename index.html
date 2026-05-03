@@ -63,7 +63,10 @@
             
             <div class="card" style="padding: 20px; margin-bottom: 24px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #1e293b; font-size: 18px;">Nhóm: <span id="group-name" style="color: #4776E6;">Đang tải...</span></h3>
+                    <h3 style="margin: 0; color: #1e293b; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                        Nhóm: <span id="group-name" style="color: #4776E6;">Đang tải...</span>
+                        <span id="btn-edit-group-name" class="hidden" style="cursor:pointer; font-size:15px; color:gray;" title="Sửa tên nhóm">✏️</span>
+                    </h3>
                     <span id="user-role" style="font-size: 12px;">...</span>
                 </div>
 
@@ -78,7 +81,7 @@
                     </div>
                 </div>
 
-                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC CÓ TƯƠNG TÁC -->
+                <!-- VỊ TRÍ 2: BẢNG THÔNG BÁO & CÔNG VIỆC -->
                 <div style="border-left: 5px solid #4776E6; padding-left: 10px;">
                     <div class="section-header" style="margin-top:0; margin-bottom:10px;">
                         <h4 style="color:#4776E6; font-size:15px;">📢 BẢNG TIN & CÔNG VIỆC</h4>
@@ -154,12 +157,11 @@
         </div>
     </div>
 
-    <!-- MODAL ĐĂNG/SỬA BẢNG TIN (CẬP NHẬT TEXTAREA CHO TIÊU ĐỀ) -->
+    <!-- MODAL ĐĂNG/SỬA BẢNG TIN -->
     <div id="anno-modal" class="modal hidden">
         <div class="modal-content prompt-large">
             <h3 id="anno-modal-title" style="margin-bottom: 5px;">📢 Đăng Bản Tin</h3>
             <input type="hidden" id="anno-id">
-            <!-- Đổi sang textarea để hiển thị nhiều dòng -->
             <textarea id="anno-title-input" class="large-title-input" placeholder="Nhập tiêu đề (có thể xuống dòng)..." rows="2"></textarea>
             <textarea id="anno-content-input" placeholder="Viết nội dung chi tiết... (hỗ trợ chèn icon emoji từ bàn phím ✨)" rows="6"></textarea>
             <div class="modal-actions">
@@ -169,13 +171,15 @@
         </div>
     </div>
 
-    <!-- CÁC MODAL HỆ THỐNG KHÁC (GIỮ NGUYÊN) -->
+    <!-- CÁC MODAL HỆ THỐNG KHÁC -->
     <div id="custom-prompt-modal" class="modal hidden"><div class="modal-content prompt-large"><h3 id="prompt-title">Nhập thông tin</h3><p id="prompt-desc" style="font-size:13px; color:gray; margin-bottom:5px;"></p><textarea id="prompt-textarea" placeholder="Viết nội dung tại đây..." rows="5"></textarea><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">Xác nhận</button></div></div></div>
     <div id="tx-modal" class="modal hidden"><div class="modal-content"><h3>Thêm Giao Dịch</h3><input type="number" id="tx-amount" placeholder="Số tiền (VNĐ)..."><input type="text" id="tx-desc" placeholder="Mô tả ngắn gọn..."><select id="tx-campaign-select"><option value="">-- Quỹ chung --</option></select><div class="modal-actions"><button id="btn-cancel-tx" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-tx" class="btn btn-success btn-3d">Xác nhận</button></div></div></div>
     <div id="view-profile-modal" class="modal hidden"><div class="modal-content" style="text-align: center;"><h3 style="margin-bottom: 15px;">👀 Hồ sơ</h3><img id="view-profile-avatar" src="" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px; border: 3px solid #4776E6;"><h2 id="view-profile-name" style="font-size: 20px; color: #1e293b;">Tên</h2><p style="color: gray; font-size: 14px; margin-bottom: 15px;">📞 <span id="view-profile-phone">SĐT</span></p><div style="background: #f8fafc; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 15px;"><p>🏠 <b>Địa chỉ:</b> <span id="view-profile-address">...</span></p><p style="margin-top: 8px;">👤 <b>Người mời:</b> <span id="view-profile-inviter">...</span></p></div><button id="btn-close-view-profile" class="btn btn-secondary btn-3d">Đóng</button></div></div>
     <div id="filter-modal" class="modal hidden"><div class="modal-content" style="max-height: 85vh;"><h3 style="text-align: center; margin-bottom: 10px;">🔍 Tra cứu</h3><div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;"><select id="filter-type"><option value="all">Tất cả</option><option value="income">Chỉ Thu ➕</option><option value="expense">Chỉ Chi ➖</option></select><select id="filter-member"><option value="all">Mọi thành viên</option></select></div><div style="background: #f8f9fa; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center; border: 1px solid #ddd; margin-bottom: 10px;">Tổng: <span id="filter-total-amount" style="font-size: 18px;">0</span> ₫</div><div style="overflow-y: auto; max-height: 40vh;"><ul id="filter-results-list" class="transaction-list"></ul></div><div class="modal-actions" style="margin-top: 10px;"><button id="btn-close-filter" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
     <div id="noti-modal" class="modal hidden"><div class="modal-content" style="max-height: 80vh;"><h3 style="text-align: center; margin-bottom: 10px;">🔔 Thông báo</h3><div id="noti-list" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 50vh;"></div><div class="modal-actions"><button id="btn-close-noti" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
-    <div id="settings-modal" class="modal hidden"><div class="modal-content"><h3 style="text-align: center; margin-bottom: 10px;">⚙️ Cài đặt</h3><div style="background: #f8fafc; padding: 15px; border-radius: 12px;"><h4 style="margin-bottom: 10px; font-size: 14px; color: #4776E6;">👤 Cá nhân</h4><input type="text" id="edit-profile-name" placeholder="Họ và tên..."><input type="text" id="edit-profile-address" placeholder="Địa chỉ..."><input type="text" id="edit-profile-avatar" placeholder="Link ảnh (tùy chọn)"><button id="btn-submit-profile" class="btn btn-primary btn-3d" style="width: 100%; margin-top: 10px;">Lưu Thay Đổi</button></div><div id="settings-section-admin" class="hidden" style="background: #FFFBEB; padding: 15px; border-radius: 12px; border-left: 4px solid #F59E0B; margin-top: 10px;"><h4 style="margin-bottom: 10px; font-size: 14px; color: #D97706;">👑 Quản trị</h4><div id="admin-actions-container" style="display: flex; gap: 10px;"></div></div><div class="modal-actions"><button id="btn-cancel-settings" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
+    
+    <!-- CÀI ĐẶT (ĐÃ THÊM NÚT NHƯỜNG QUYỀN VÀO BÊN TRONG JS) -->
+    <div id="settings-modal" class="modal hidden"><div class="modal-content"><h3 style="text-align: center; margin-bottom: 10px;">⚙️ Cài đặt</h3><div style="background: #f8fafc; padding: 15px; border-radius: 12px;"><h4 style="margin-bottom: 10px; font-size: 14px; color: #4776E6;">👤 Cá nhân</h4><input type="text" id="edit-profile-name" placeholder="Họ và tên..."><input type="text" id="edit-profile-address" placeholder="Địa chỉ..."><input type="text" id="edit-profile-avatar" placeholder="Link ảnh (tùy chọn)"><button id="btn-submit-profile" class="btn btn-primary btn-3d" style="width: 100%; margin-top: 10px;">Lưu Thay Đổi</button></div><div id="settings-section-admin" class="hidden" style="background: #FFFBEB; padding: 15px; border-radius: 12px; border-left: 4px solid #F59E0B; margin-top: 10px;"><h4 style="margin-bottom: 10px; font-size: 14px; color: #D97706;">👑 Quản trị</h4><div id="admin-actions-container" style="display: flex; flex-direction: column; gap: 10px;"></div></div><div class="modal-actions"><button id="btn-cancel-settings" class="btn btn-secondary btn-3d" style="width: 100%;">Đóng</button></div></div></div>
 
     <script type="module" src="app.js"></script>
 </body>
