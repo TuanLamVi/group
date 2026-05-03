@@ -20,11 +20,13 @@ const mainScreen = document.getElementById('main-screen');
 const txModal = document.getElementById('tx-modal');
 
 let currentUser = null;
-let currentGroupId = null; // Không còn gắn cứng nữa
+let currentGroupId = null; 
 let txType = ""; 
-let isOwner = false; 
 
-// Các biến lưu trữ trình lắng nghe (để tắt đi khi chuyển nhóm)
+// [THAY ĐỔI 1]: Bỏ biến isOwner, thay bằng 2 biến này để quản lý Phó nhóm
+let userRole = 'member'; // 'owner', 'deputy', hoặc 'member'
+let isManager = false;   // Gom chung quyền (Trưởng hoặc Phó đều được duyệt)
+
 let unsubGroup = null;
 let unsubCampaigns = null;
 let unsubTx = null;
@@ -39,13 +41,11 @@ document.getElementById('login-btn').addEventListener('click', () => {
     
     loginScreen.classList.add('hidden');
     dashboardScreen.classList.remove('hidden');
-    
-    loadUserGroups(); // Tải danh sách nhóm của user này
+    loadUserGroups(); 
 });
 
 // ================= 2. QUẢN LÝ DANH SÁCH NHÓM (DASHBOARD) =================
 function loadUserGroups() {
-    // Tìm tất cả các nhóm mà phone của user có trong mảng 'members'
     const q = query(collection(db, "groups"), where("members", "array-contains", currentUser.phone));
     
     onSnapshot(q, (snapshot) => {
@@ -59,12 +59,22 @@ function loadUserGroups() {
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            const roleText = data.ownerId === currentUser.phone ? '👑 Trưởng nhóm' : '👥 Thành viên';
+            
+            // [THAY ĐỔI 2]: Xác định vai trò để gắn Badge màu sắc ngoài Dashboard
+            let roleHtml = '';
+            if (data.ownerId === currentUser.phone) {
+                roleHtml = '<span class="role-badge role-owner">👑 Trưởng nhóm</span>';
+            } else if (data.deputies && data.deputies.includes(currentUser.phone)) {
+                roleHtml = '<span class="role-badge role-deputy">⭐ Phó nhóm</span>';
+            } else {
+                roleHtml = '<span class="role-badge role-member">👥 Thành viên</span>';
+            }
             
             list.innerHTML += `
                 <div class="group-item-card" onclick="window.enterGroup('${docSnap.id}')">
                     <div class="group-item-name">${data.name}</div>
-                    <div class="group-item-role">${roleText} - Số dư: ${(data.balance || 0).toLocaleString()} ₫</div>
+                    ${roleHtml}
+                    <div class="group-item-balance">Số dư: <b>${(data.balance || 0).toLocaleString()} ₫</b></div>
                 </div>
             `;
         });
@@ -80,14 +90,13 @@ document.getElementById('btn-create-group').addEventListener('click', async () =
         await addDoc(collection(db, "groups"), {
             name: groupName,
             ownerId: currentUser.phone,
-            members: [currentUser.phone], // Tự động thêm mình vào làm thành viên đầu tiên
+            deputies: [], // [THAY ĐỔI 3]: Tự động tạo mảng deputies (Phó nhóm) trống
+            members: [currentUser.phone],
             balance: 0,
             createdAt: serverTimestamp()
         });
         alert("Tạo nhóm thành công!");
-    } catch (error) {
-        alert("Lỗi: " + error.message);
-    }
+    } catch (error) { alert("Lỗi: " + error.message); }
 });
 
 // Chuyển từ Dashboard vào Chi tiết Nhóm
@@ -95,22 +104,20 @@ window.enterGroup = (groupId) => {
     currentGroupId = groupId;
     dashboardScreen.classList.add('hidden');
     mainScreen.classList.remove('hidden');
-    initRealtimeListeners(); // Kích hoạt lắng nghe dữ liệu cho nhóm này
+    initRealtimeListeners(); 
 };
 
-// Nút Quay lại Dashboard
+// Nút Quay lại
 document.getElementById('btn-back-dashboard').addEventListener('click', () => {
-    // Tắt lắng nghe dữ liệu của nhóm cũ để tiết kiệm tài nguyên mạng
     if(unsubGroup) unsubGroup();
     if(unsubCampaigns) unsubCampaigns();
     if(unsubTx) unsubTx();
-    
     currentGroupId = null;
     mainScreen.classList.add('hidden');
     dashboardScreen.classList.remove('hidden');
 });
 
-// ================= 3. CHI TIẾT NHÓM (Giống cũ nhưng đã tối ưu) =================
+// ================= 3. CHI TIẾT NHÓM =================
 function initRealtimeListeners() {
     // 3.1 Lắng nghe Nhóm
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), (docSnap) => {
@@ -119,14 +126,27 @@ function initRealtimeListeners() {
         document.getElementById('group-name').innerText = data.name;
         document.getElementById('balance').innerText = (data.balance || 0).toLocaleString();
         
-        isOwner = (data.ownerId === currentUser.phone);
-        document.getElementById('user-role').innerText = isOwner ? "👑 Trưởng nhóm" : "👥 Thành viên";
+        // [THAY ĐỔI 4]: Hiển thị chức vụ trong Chi tiết nhóm
+        if (data.ownerId === currentUser.phone) {
+            userRole = 'owner';
+            document.getElementById('user-role').innerHTML = '<span class="role-badge role-owner">👑 Trưởng nhóm</span>';
+        } else if (data.deputies && data.deputies.includes(currentUser.phone)) {
+            userRole = 'deputy';
+            document.getElementById('user-role').innerHTML = '<span class="role-badge role-deputy">⭐ Phó nhóm</span>';
+        } else {
+            userRole = 'member';
+            document.getElementById('user-role').innerHTML = '<span class="role-badge role-member">👥 Thành viên</span>';
+        }
+
+        // isManager = Trưởng nhóm HOẶC Phó nhóm
+        isManager = (userRole === 'owner' || userRole === 'deputy');
         
-        // Ẩn/hiện tính năng theo quyền
-        document.getElementById('btn-create-campaign').classList.toggle('hidden', !isOwner);
-        document.getElementById('btn-add-member').classList.toggle('hidden', !isOwner);
-        document.getElementById('btn-income').innerText = isOwner ? "➕ Thu tiền" : "➕ Đề xuất Thu";
-        document.getElementById('btn-expense').innerText = isOwner ? "➖ Chi tiền" : "➖ Đề xuất Chi";
+        // Cấp quyền UI dựa trên chức vụ
+        document.getElementById('btn-create-campaign').classList.toggle('hidden', !isManager);
+        document.getElementById('btn-add-member').classList.toggle('hidden', userRole !== 'owner'); // Chỉ Owner mới được thêm người
+        
+        document.getElementById('btn-income').innerText = isManager ? "➕ Thu tiền" : "➕ Đề xuất Thu";
+        document.getElementById('btn-expense').innerText = isManager ? "➖ Chi tiền" : "➖ Đề xuất Chi";
 
         document.getElementById('member-list').innerText = (data.members || []).join(" • ");
     });
@@ -147,7 +167,7 @@ function initRealtimeListeners() {
                             <span>🏕️ ${data.name}</span>
                             <span class="campaign-balance">${data.balance.toLocaleString()} ₫</span>
                         </div>
-                        ${isOwner ? `<button class="btn-close-campaign" onclick="window.closeCampaign('${docSnap.id}', '${data.name}')">Tất toán</button>` : ''}
+                        ${isManager ? `<button class="btn-close-campaign" onclick="window.closeCampaign('${docSnap.id}', '${data.name}')">Tất toán</button>` : ''}
                     </div>`;
                 txSelect.innerHTML += `<option value="${docSnap.id}">${data.name}</option>`;
             }
@@ -177,7 +197,7 @@ function initRealtimeListeners() {
                             <strong>${data.createdBy}</strong> đề xuất ${data.type === 'income' ? 'THU' : 'CHI'}<br>
                             <span>${data.description}</span>: <b style="color:${color}">${symbol}${data.amount.toLocaleString()}đ</b>
                         </div>
-                        ${isOwner ? `
+                        ${isManager ? ` <!-- [THAY ĐỔI 5]: isManager được quyền duyệt -->
                         <div class="pending-actions">
                             <button class="btn-approve" onclick="window.reviewTx('${docSnap.id}', true)">Duyệt</button>
                             <button class="btn-reject" onclick="window.reviewTx('${docSnap.id}', false)">Hủy</button>
@@ -198,9 +218,7 @@ function initRealtimeListeners() {
     });
 }
 
-// ================= CÁC CHỨC NĂNG CÒN LẠI GIỮ NGUYÊN =================
-
-// Thêm thành viên mới (Dùng arrayUnion để tránh trùng lặp)
+// Thêm thành viên
 document.getElementById('btn-add-member').addEventListener('click', async () => {
     const newPhone = prompt("Nhập số điện thoại bạn bè để mời vào nhóm:");
     if (newPhone && newPhone.length >= 9) {
@@ -213,10 +231,7 @@ document.getElementById('btn-add-member').addEventListener('click', async () => 
     }
 });
 
-// Các logic Mở Modal, Submit Modal Thu/Chi, Trưởng nhóm duyệt, Tạo sự kiện, Tất toán... 
-// (Giữ nguyên y hệt như bản code trước, chỉ gộp vào đây cho gọn).
-
-// Mở Modal
+// Mở Modal Thu / Chi
 document.getElementById('btn-income').addEventListener('click', () => { txType = "income"; txModal.classList.remove('hidden'); });
 document.getElementById('btn-expense').addEventListener('click', () => { txType = "expense"; txModal.classList.remove('hidden'); });
 document.getElementById('btn-cancel-tx').addEventListener('click', () => txModal.classList.add('hidden'));
@@ -229,10 +244,12 @@ document.getElementById('btn-submit-tx').addEventListener('click', async () => {
     if (!amount || amount <= 0 || !desc) return alert("Vui lòng nhập đầy đủ!");
     
     const changeAmount = txType === "expense" ? -amount : amount;
-    const txStatus = isOwner ? "approved" : "pending"; 
+    
+    // [THAY ĐỔI 6]: Nếu là isManager (Trưởng hoặc phó) thì approved luôn, còn lại thì pending
+    const txStatus = isManager ? "approved" : "pending"; 
 
     try {
-        if (isOwner) {
+        if (isManager) {
             const targetRef = campaignId ? doc(db, "groups", currentGroupId, "campaigns", campaignId) : doc(db, "groups", currentGroupId);
             await updateDoc(targetRef, { balance: increment(changeAmount) });
         }
@@ -242,7 +259,7 @@ document.getElementById('btn-submit-tx').addEventListener('click', async () => {
         });
         txModal.classList.add('hidden');
         document.getElementById('tx-amount').value = ''; document.getElementById('tx-desc').value = '';
-        if (!isOwner) alert("Đã gửi đề xuất cho Trưởng nhóm duyệt!");
+        if (!isManager) alert("Đã gửi đề xuất duyệt!");
     } catch (error) { alert("Lỗi: " + error.message); }
 });
 
