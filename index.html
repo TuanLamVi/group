@@ -5,77 +5,104 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản Lý Nhóm & Quỹ</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="app">
-        <!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ -->
-        <div id="auth-screen" class="container">
-            <h2 id="auth-title">Đăng nhập</h2>
-            
-            <div id="login-form">
-                <input type="tel" id="login-phone" placeholder="Số điện thoại...">
-                <input type="password" id="login-password" placeholder="Mật khẩu...">
-                <button id="btn-login-submit" class="btn btn-primary btn-3d">Đăng nhập</button>
-                <p style="margin-top: 15px; font-size: 14px;">
-                    Chưa có tài khoản? <a href="#" id="link-to-register" style="color: #007bff;">Đăng ký</a> | 
-                    <a href="#" id="link-forgot-pwd" style="color: #dc3545; font-weight: bold;">Quên mật khẩu?</a>
-                </p>
-            </div>
-
-            <div id="register-form" class="hidden">
-                <input type="text" id="reg-name" placeholder="Họ và tên...">
-                <input type="tel" id="reg-phone" placeholder="Số điện thoại...">
-                <input type="text" id="reg-address" placeholder="Địa chỉ...">
-                <input type="password" id="reg-password" placeholder="Mật khẩu (ít nhất 8 ký tự)...">
-                <input type="number" id="reg-pin" placeholder="Thiết lập mã PIN 4 số (để khôi phục mật khẩu)..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
-                <button id="btn-register-submit" class="btn btn-success btn-3d">Đăng ký</button>
-                <p style="margin-top: 15px; font-size: 14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color: #007bff;">Đăng nhập</a></p>
+    <div class="app-container">
+        <!-- MÀN HÌNH 1: XÁC THỰC -->
+        <div id="auth-screen" class="screen">
+            <div class="card login-card">
+                <h2 id="auth-title">Đăng nhập</h2>
+                <p>Quản lý quỹ nhóm minh bạch</p>
+                <div id="login-form">
+                    <input type="tel" id="login-phone" placeholder="Số điện thoại...">
+                    <input type="password" id="login-password" placeholder="Mật khẩu...">
+                    <button id="btn-login-submit" class="btn btn-primary btn-3d">Vào ứng dụng</button>
+                    <p style="margin-top: 15px; font-size: 14px;">
+                        Chưa có tài khoản? <a href="#" id="link-to-register" style="color: #007bff;">Đăng ký</a> | 
+                        <a href="#" id="link-forgot-pwd" style="color: #dc3545; font-weight: bold;">Quên mật khẩu?</a>
+                    </p>
+                </div>
+                <div id="register-form" class="hidden">
+                    <input type="text" id="reg-name" placeholder="Họ và tên...">
+                    <input type="tel" id="reg-phone" placeholder="Số điện thoại...">
+                    <input type="text" id="reg-address" placeholder="Địa chỉ thường trú...">
+                    <input type="password" id="reg-password" placeholder="Mật khẩu (ít nhất 8 ký tự)...">
+                    <input type="number" id="reg-pin" placeholder="Thiết lập mã PIN 4 số..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
+                    <button id="btn-register-submit" class="btn btn-success btn-3d">Đăng ký ngay</button>
+                    <p style="margin-top: 15px; font-size: 14px;">Đã có tài khoản? <a href="#" id="link-to-login" style="color: #007bff;">Đăng nhập</a></p>
+                </div>
             </div>
         </div>
 
-        <!-- MÀN HÌNH DASHBOARD -->
-        <div id="dashboard-screen" class="container hidden">
-            <div class="header">
-                <div class="user-info">
+        <!-- MÀN HÌNH 2: DASHBOARD -->
+        <div id="dashboard-screen" class="screen hidden">
+            <div class="profile-header card">
+                <div style="display: flex; align-items: center; gap: 15px;">
                     <img id="user-avatar" src="" alt="Avatar" class="avatar-img">
                     <div>
-                        <div id="user-name-display" style="font-weight: bold;"></div>
-                        <div id="user-phone-display" style="font-size: 12px; color: gray;"></div>
+                        <h3 id="user-name-display">Đang tải...</h3>
+                        <p style="font-size: 13px; color: gray;" id="user-phone-display"></p>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button id="btn-edit-profile" class="btn-sm btn-secondary btn-3d">⚙️ Cài đặt</button>
-                    <button id="btn-logout" class="btn-sm btn-danger btn-3d">Thoát</button>
+                <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                    <button id="btn-edit-profile" class="btn-sm btn-secondary btn-3d" style="width: 48%;">⚙️ Cài đặt</button>
+                    <button id="btn-logout" class="btn-sm btn-danger btn-3d" style="width: 48%;">Đăng xuất</button>
                 </div>
             </div>
-            <h3>Nhóm của bạn</h3>
-            <div id="group-list"></div>
-            <button id="btn-create-group" class="btn btn-primary btn-3d" style="margin-top: 20px;">+ Tạo nhóm mới</button>
+            <div class="section-header">
+                <h2>Nhóm Của Tôi</h2>
+                <button id="btn-create-group" class="btn-sm btn-primary btn-3d">➕ Tạo nhóm</button>
+            </div>
+            <div id="group-list" class="group-list"></div>
         </div>
 
-        <!-- MÀN HÌNH CHI TIẾT NHÓM (Ví dụ thu nhỏ, bạn giữ các phần thu chi cũ) -->
-        <div id="main-screen" class="container hidden">
+        <!-- MÀN HÌNH 3: CHI TIẾT NHÓM -->
+        <div id="main-screen" class="screen hidden">
             <button id="btn-back-dashboard" class="btn-sm btn-secondary btn-3d" style="margin-bottom: 15px;">🔙 Trở về</button>
-            <div id="member-section">
-                <!-- Thanh tìm kiếm và danh sách thành viên sẽ render ở đây -->
+            <div class="card balance-card">
+                <h3>Nhóm: <span id="group-name">...</span></h3>
+                <h1 class="balance-amount"><span id="balance">0</span> ₫</h1>
+                <p style="font-size: 12px; color: #ffd700;">Vai trò: <span id="user-role">...</span></p>
             </div>
-        </div>
-
-        <!-- MODAL QUÊN MẬT KHẨU -->
-        <div id="forgot-password-modal" class="modal hidden">
-            <div class="modal-content">
-                <h3 style="text-align: center; margin-bottom: 10px;">🔐 Khôi phục mật khẩu</h3>
-                <input type="tel" id="forgot-phone" placeholder="Số điện thoại...">
-                <input type="number" id="forgot-pin" placeholder="Nhập mã PIN 4 số..." oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);">
-                <input type="password" id="forgot-new-password" placeholder="Mật khẩu mới...">
-                <div class="modal-actions">
-                    <button id="btn-cancel-forgot" class="btn btn-secondary btn-3d" style="width: 50%;">Hủy</button>
-                    <button id="btn-submit-forgot" class="btn btn-primary btn-3d" style="width: 50%;">Xác nhận</button>
+            <div class="action-buttons">
+                <button id="btn-income" class="btn btn-success btn-3d">➕ Thu tiền</button>
+                <button id="btn-expense" class="btn btn-danger btn-3d">➖ Chi tiền</button>
+            </div>
+            <div id="pending-section" class="hidden"><ul id="pending-list" class="transaction-list"></ul></div>
+            <div id="pending-members-section" class="hidden"><div id="pending-members-list" class="transaction-list"></div></div>
+            <div class="campaign-section">
+                <div class="section-header"><h3>Quỹ Sự Kiện</h3><button id="btn-create-campaign" class="btn-sm btn-primary btn-3d hidden">➕ Tạo</button></div>
+                <div id="campaign-list" class="campaign-list"></div>
+            </div>
+            <div class="campaign-section">
+                <div class="section-header"><h3>Thành viên</h3><button id="btn-add-member" class="btn-sm btn-secondary btn-3d">➕ Mời</button></div>
+                <div style="position: relative; margin-bottom: 10px;"><input type="text" id="search-member-input" placeholder="🔍 Tìm tên hoặc SĐT..." style="padding-left: 35px;"></div>
+                <div id="member-list" class="transaction-list"></div>
+                <div id="pagination-controls" style="display: flex; justify-content: center; gap: 10px; align-items: center; margin-top: 10px;">
+                    <button id="btn-prev-page" class="btn-sm btn-secondary btn-3d">◀</button>
+                    <span id="page-info">1/1</span>
+                    <button id="btn-next-page" class="btn-sm btn-secondary btn-3d">▶</button>
                 </div>
             </div>
+            <div class="recent-transactions"><h3>Lịch sử</h3><ul id="transaction-list" class="transaction-list"></ul></div>
         </div>
     </div>
+
+    <!-- CÁC MODAL (POPUP) -->
+    <div id="tx-modal" class="modal hidden"><div class="modal-content">
+        <h3>Giao Dịch</h3><input type="number" id="tx-amount" placeholder="Số tiền..."><input type="text" id="tx-desc" placeholder="Mô tả..."><select id="tx-campaign-select"></select>
+        <div class="modal-actions"><button id="btn-cancel-tx" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-tx" class="btn btn-success btn-3d">Xác nhận</button></div>
+    </div></div>
+    <div id="settings-modal" class="modal hidden"><div class="modal-content">
+        <h3>⚙️ Cài đặt</h3><input type="text" id="edit-profile-name" placeholder="Tên..."><input type="text" id="edit-profile-address" placeholder="Địa chỉ..."><input type="text" id="edit-profile-avatar" placeholder="Link ảnh..."><button id="btn-submit-profile" class="btn btn-primary btn-3d">Lưu</button>
+        <div id="settings-section-admin" class="hidden"><hr><div id="admin-actions-container" style="display: flex; gap: 10px; margin-top: 10px;"></div></div>
+        <button id="btn-cancel-settings" class="btn btn-secondary btn-3d" style="margin-top: 10px;">Đóng</button>
+    </div></div>
+    <div id="forgot-password-modal" class="modal hidden"><div class="modal-content">
+        <h3>🔐 Khôi phục mật khẩu</h3><input type="tel" id="forgot-phone" placeholder="Số điện thoại..."><input type="number" id="forgot-pin" placeholder="Mã PIN 4 số..."><input type="password" id="forgot-new-password" placeholder="Mật khẩu mới...">
+        <div class="modal-actions"><button id="btn-cancel-forgot" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-submit-forgot" class="btn btn-primary btn-3d">Xác nhận</button></div>
+    </div></div>
+    <div id="custom-prompt-modal" class="modal hidden"><div class="modal-content"><h3 id="prompt-title"></h3><input type="text" id="prompt-input"><div class="modal-actions"><button id="btn-prompt-cancel" class="btn btn-secondary btn-3d">Hủy</button><button id="btn-prompt-submit" class="btn btn-primary btn-3d">OK</button></div></div></div>
     <script type="module" src="app.js"></script>
 </body>
 </html>
