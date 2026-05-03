@@ -195,3 +195,12 @@ body {
     display: flex;
     gap: 10px;
 }
+/* Nút duyệt/từ chối đề xuất */
+.pending-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+}
+.btn-approve { background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;}
+.btn-reject { background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;}
+.pending-item { background: #fff3cd; border-left: 4px solid #ffc107; }
