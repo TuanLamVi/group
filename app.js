@@ -16,7 +16,7 @@ const db = getFirestore(app);
 // DOM Elements
 const authScreen = document.getElementById('auth-screen'); const dashboardScreen = document.getElementById('dashboard-screen'); const mainScreen = document.getElementById('main-screen');
 const txModal = document.getElementById('tx-modal'); const settingsModal = document.getElementById('settings-modal'); const notiModal = document.getElementById('noti-modal');
-const viewProfileModal = document.getElementById('view-profile-modal'); const annoModal = document.getElementById('anno-modal');
+const viewProfileModal = document.getElementById('view-profile-modal'); const annoModal = document.getElementById('anno-modal'); const viewAnnoModal = document.getElementById('view-anno-modal');
 
 // State Variables
 let currentUser = null; let currentGroupId = null; let currentGroupData = null; let userRole = 'member'; let isManager = false; let txType = "";
@@ -25,7 +25,7 @@ let unsubUser = null; let unsubGroup = null; let unsubCampaigns = null; let unsu
 // Pagination
 let cachedTransactions = []; let approvedTransactions = []; let currentTxPage = 1; const TX_PER_PAGE = 5; 
 let pendingMembersArr = []; let pendingTxArr = []; let currentPendingPage = 1; const PENDING_PER_PAGE = 5;
-let groupAnnouncements = []; let currentAnnoPage = 1; const ANNO_PER_PAGE = 5;
+let groupAnnouncements = []; let currentAnnoPage = 1; const ANNO_PER_PAGE = 5; let currentOpenAnnoId = null;
 let currentlyOpenMember = null; let cachedGroupMembersArray = []; let searchMemberQuery = ""; let currentMemberPage = 1; const MEMBERS_PER_PAGE = 10;
 
 const FB_EMOJIS = { '👍': { text: 'Thích', color: '#056BF0' }, '❤️': { text: 'Yêu thích', color: '#F33E58' }, '🥰': { text: 'Thương', color: '#F7B125' }, '😂': { text: 'Haha', color: '#F7B125' }, '😮': { text: 'Wow', color: '#F7B125' }, '😢': { text: 'Buồn', color: '#F7B125' }, '😡': { text: 'Phẫn nộ', color: '#E9710F' } };
@@ -35,7 +35,7 @@ async function getUsersData(phoneArray) {
     const result = {};
     for (const phone of phoneArray) {
         if (userCache[phone]) { result[phone] = userCache[phone]; } 
-        else { const snap = await getDoc(doc(db, "users", phone)); if (snap.exists()) { userCache[phone] = snap.data(); result[phone] = snap.data(); } else { result[phone] = { name: "Thành viên ẩn", phone: phone, address: "Không có" }; } }
+        else { const snap = await getDoc(doc(db, "users", phone)); if (snap.exists()) { userCache[phone] = snap.data(); result[phone] = snap.data(); } else { result[phone] = { name: "Thành viên ẩn", phone: phone, address: "Không có thông tin" }; } }
     } return result;
 }
 
@@ -46,7 +46,7 @@ async function sendNotification(targetPhone, title, body, groupId) {
 
 document.getElementById('btn-notifications').addEventListener('click', () => { notiModal.classList.remove('hidden'); });
 document.getElementById('btn-close-noti').addEventListener('click', () => { notiModal.classList.add('hidden'); });
-window.markNotiRead = async (notiId, groupId) => { try { await updateDoc(doc(db, "users", currentUser.phone, "notifications", notiId), { read: true }); notiModal.classList.add('hidden'); if (groupId && currentGroupId !== groupId) window.enterGroup(groupId); } catch (e) {} };
+window.markNotiRead = async (notiId, groupId) => { try { await updateDoc(doc(db, "users", currentUser.phone, "notifications", notiId), { read: true }); notiModal.classList.add('hidden'); if (groupId && currentGroupId !== groupId) window.enterGroup(groupId); } catch (e) { console.error(e); } };
 
 window.customPrompt = function(title, description, placeholder) {
     return new Promise((resolve) => {
@@ -105,9 +105,19 @@ function renderInteractionsHTML(docId, data, isAnno = false) {
 }
 window.toggleComments = (id) => { const el = document.getElementById(`comments-${id}`); if(el) el.classList.toggle('hidden'); };
 
-// ================= BẢNG TIN (ANNOUNCEMENTS) CÓ TƯƠNG TÁC =================
+// ================= BẢNG TIN (ANNOUNCEMENTS) KIỂU BÀI BÁO =================
+function isAnnoRead(id) {
+    const readList = JSON.parse(localStorage.getItem(`readAnnos_${currentUser.phone}`) || '[]');
+    return readList.includes(id);
+}
+function markAnnoRead(id) {
+    const readList = JSON.parse(localStorage.getItem(`readAnnos_${currentUser.phone}`) || '[]');
+    if (!readList.includes(id)) { readList.push(id); localStorage.setItem(`readAnnos_${currentUser.phone}`, JSON.stringify(readList)); }
+}
+
 document.getElementById('btn-open-anno-modal').addEventListener('click', () => { 
     document.getElementById('anno-id').value = ''; document.getElementById('anno-title-input').value = ''; document.getElementById('anno-content-input').value = '';
+    document.getElementById('anno-modal-title').innerText = "📢 Đăng Bản Tin";
     annoModal.classList.remove('hidden'); 
 });
 document.getElementById('btn-cancel-anno').addEventListener('click', () => annoModal.classList.add('hidden'));
@@ -118,47 +128,75 @@ document.getElementById('btn-submit-anno').addEventListener('click', async () =>
     try {
         if(id) { await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { title, content }); } 
         else { await addDoc(collection(db, "groups", currentGroupId, "announcements"), { title, content, createdBy: currentUser.name, creatorPhone: currentUser.phone, reactions: {}, comments: [], createdAt: serverTimestamp() }); }
-        annoModal.classList.add('hidden');
+        annoModal.classList.add('hidden'); viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;
     } catch(e) { alert("Lỗi: " + e.message); }
 });
 
 window.editAnno = (id, title, content) => {
     document.getElementById('anno-id').value = id; document.getElementById('anno-title-input').value = title; document.getElementById('anno-content-input').value = content;
+    document.getElementById('anno-modal-title').innerText = "✏️ Sửa Bản Tin";
     annoModal.classList.remove('hidden');
 };
-window.deleteAnno = async (id) => { if(confirm("Xóa bài viết này?")) await deleteDoc(doc(db, "groups", currentGroupId, "announcements", id)); };
+window.deleteAnno = async (id) => { if(confirm("Xóa bài viết này?")) { await deleteDoc(doc(db, "groups", currentGroupId, "announcements", id)); viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null;} };
 
 window.reactToAnno = async (id, emoji) => { try { const ref = doc(db, "groups", currentGroupId, "announcements", id); const data = (await getDoc(ref)).data(); const reactions = data.reactions || {}; if (reactions[currentUser.phone] === emoji) delete reactions[currentUser.phone]; else reactions[currentUser.phone] = emoji; await updateDoc(ref, { reactions }); } catch(e){} };
 window.submitAnnoComment = async (id) => { const inp = document.getElementById(`input-cmt-${id}`); const txt = inp.value.trim(); if(!txt) return; try { await updateDoc(doc(db, "groups", currentGroupId, "announcements", id), { comments: arrayUnion({ phone: currentUser.phone, name: currentUser.name, text: txt, time: Date.now() }) }); inp.value = ''; } catch(e){} };
+
+// Đọc tin (Mở Popup)
+window.openAnnoDetail = (id) => {
+    markAnnoRead(id); renderAnnouncements(); // Cập nhật để tắt thẻ NEW
+    currentOpenAnnoId = id; renderAnnoModalContent();
+    viewAnnoModal.classList.remove('hidden');
+};
+document.getElementById('btn-close-view-anno').addEventListener('click', () => { viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null; });
+
+function renderAnnoModalContent() {
+    if (!currentOpenAnnoId) return;
+    const anno = groupAnnouncements.find(a => a.id === currentOpenAnnoId);
+    if (!anno) { viewAnnoModal.classList.add('hidden'); currentOpenAnnoId = null; return; }
+    
+    const time = anno.createdAt ? anno.createdAt.toDate().toLocaleString('vi-VN') : 'Vừa xong';
+    const isAuthorOrManager = (isManager || anno.creatorPhone === currentUser.phone);
+    const actionHtml = isAuthorOrManager ? `<div style="display:flex; gap:15px; margin-top:10px;"><span style="cursor:pointer; color:#0EA5E9; font-size:14px; font-weight:bold;" onclick="window.editAnno('${anno.id}', \`${anno.title}\`, \`${anno.content}\`)">✏️ Sửa</span><span style="cursor:pointer; color:#EF4444; font-size:14px; font-weight:bold;" onclick="window.deleteAnno('${anno.id}')">🗑️ Xóa</span></div>` : '';
+    const interactHtml = renderInteractionsHTML(anno.id, anno, true);
+    
+    const container = document.getElementById('view-anno-container');
+    container.innerHTML = `
+        <div class="anno-full-view">
+            <div class="anno-full-title">${anno.title}</div>
+            <div class="anno-meta" style="margin-bottom: 15px;">Đăng bởi: <b>${anno.createdBy || 'Quản trị viên'}</b> • ${time}</div>
+            <div class="anno-full-body">${anno.content}</div>
+            ${actionHtml}
+        </div>
+        ${interactHtml}
+    `;
+    // Mở sẵn phần comment khi xem chi tiết
+    document.getElementById(`comments-${anno.id}`).classList.remove('hidden');
+}
 
 function renderAnnouncements() {
     const div = document.getElementById('announcement-list');
     const totalPages = Math.ceil(groupAnnouncements.length / ANNO_PER_PAGE) || 1;
     document.getElementById('anno-page-info').innerText = `${currentAnnoPage}/${totalPages}`; document.getElementById('anno-pagination').style.display = totalPages > 1 ? 'flex' : 'none';
     const paginated = groupAnnouncements.slice((currentAnnoPage-1)*ANNO_PER_PAGE, currentAnnoPage*ANNO_PER_PAGE);
-    div.innerHTML = paginated.length === 0 ? '<p style="text-align:center; color:gray; font-size:13px; padding:10px;">Chưa có thông báo nào.</p>' : '';
+    div.innerHTML = paginated.length === 0 ? '<p style="text-align:center; color:gray; font-size:13px; padding:10px;">Chưa có thông báo nào từ ban quản trị.</p>' : '';
     
     paginated.forEach(a => {
         const time = a.createdAt ? a.createdAt.toDate().toLocaleString('vi-VN') : 'Vừa xong';
-        const isAuthorOrManager = (isManager || a.creatorPhone === currentUser.phone);
-        const actionHtml = isAuthorOrManager ? `<div style="display:flex; gap:10px;"><span style="cursor:pointer; color:#0EA5E9; font-size:13px;" onclick="window.editAnno('${a.id}', \`${a.title}\`, \`${a.content}\`)">✏️ Sửa</span><span style="cursor:pointer; color:#EF4444; font-size:13px;" onclick="window.deleteAnno('${a.id}')">🗑️ Xóa</span></div>` : '';
-        const interactHtml = renderInteractionsHTML(a.id, a, true);
-        
+        const badgeNew = !isAnnoRead(a.id) ? `<span class="badge-new">NEW</span>` : '';
         div.innerHTML += `
-        <div class="anno-item">
-            <div class="anno-header">
-                <div><div class="anno-title">${a.title}</div><div class="anno-meta">Đăng bởi: <b>${a.createdBy || 'Quản trị viên'}</b> • ${time}</div></div>
-                ${actionHtml}
-            </div>
-            <div class="anno-body">${a.content}</div>
-            ${interactHtml}
+        <div class="anno-item-compact" onclick="window.openAnnoDetail('${a.id}')">
+            ${badgeNew}
+            <div class="anno-title">${a.title}</div>
+            <div class="anno-preview">${a.content}</div>
+            <div class="anno-meta">Đăng bởi: <b>${a.createdBy || 'Quản trị'}</b> • ${time}</div>
         </div>`;
     });
 }
 document.getElementById('btn-anno-prev').addEventListener('click', () => { if(currentAnnoPage > 1) { currentAnnoPage--; renderAnnouncements(); }});
 document.getElementById('btn-anno-next').addEventListener('click', () => { if(currentAnnoPage < Math.ceil(groupAnnouncements.length/ANNO_PER_PAGE)) { currentAnnoPage++; renderAnnouncements(); }});
 
-// ================= QUẢN LÝ NHÓM & LISTENERS =================
+// ================= QUẢN LÝ NHÓM & LISTENERS CHÍNH =================
 function loadUserGroups(phone) { onSnapshot(query(collection(db, "groups"), where("members", "array-contains", phone)), (snapshot) => { const list = document.getElementById('group-list'); list.innerHTML = ''; snapshot.forEach((docSnap) => { const data = docSnap.data(); let roleHtml = (data.ownerId === phone) ? '<span class="role-badge role-owner">👑 Trưởng nhóm</span>' : (data.deputies && data.deputies.includes(phone)) ? '<span class="role-badge role-deputy">⭐ Phó nhóm</span>' : '<span class="role-badge role-member">👥 Thành viên</span>'; list.innerHTML += `<div class="group-item-card" onclick="window.enterGroup('${docSnap.id}')"><div class="group-item-name">${data.name}</div>${roleHtml}<div class="group-item-balance">Số dư: <b>${(data.balance || 0).toLocaleString()} ₫</b></div></div>`; }); }); }
 document.getElementById('btn-create-group').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Nhóm", "", "Tên nhóm..."); if (!name) return; await addDoc(collection(db, "groups"), { name, ownerId: currentUser.phone, deputies: [], members: [currentUser.phone], pendingInvites: [], balance: 0, createdAt: serverTimestamp() }); });
 window.enterGroup = (groupId) => { currentGroupId = groupId; dashboardScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); initRealtimeListeners(); };
@@ -186,7 +224,7 @@ async function renderUnifiedPendingList() {
             listDiv.innerHTML += `<div class="pending-item" style="display:flex; justify-content:space-between; align-items:center; padding:12px; margin-bottom:10px; background:#FFFBEB; border-radius:12px;"><div style="display:flex; align-items:center; gap:10px;"><img src="${avt}" style="width:36px; height:36px; border-radius:50%;"><div><div style="font-size:11px; font-weight:bold; color:#D97706;">MỜI THÀNH VIÊN</div><div style="font-size:15px; font-weight:bold;">${info.name}</div><div style="font-size:12px; color:gray;">Bởi: ${infoInv.name}</div></div></div><div style="display:flex; gap:5px; flex-direction:column;">${pAction}</div></div>`;
         } else {
             const d = i.data; const color = d.type === 'income' ? '#10B981' : '#EF4444';
-            listDiv.innerHTML += `<div class="pending-item" style="padding:12px; margin-bottom:10px; background:#FEF2F2; border-radius:12px;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><div style="font-size:11px; font-weight:bold; color:#DC2626;">ĐỀ XUẤT ${d.type==='income'?'THU':'CHI'}</div><strong>${d.createdByName}</strong><br><span style="font-size:13px;">${d.description}</span>: <b style="color:${color};">${d.type==='income'?'+':'-'}${d.amount.toLocaleString()}đ</b></div>${isManager ? `<div style="display:flex; flex-direction:column; gap:5px;"><button class="btn-sm btn-success btn-3d" onclick="window.reviewTx('${d.id}', true)">Duyệt</button><button class="btn-sm btn-danger btn-3d" onclick="window.reviewTx('${d.id}', false)">Hủy</button></div>` : ''}</div></div>`;
+            listDiv.innerHTML += `<div class="pending-item" style="padding:12px; margin-bottom:10px; background:#FEF2F2; border-left: 4px solid #EF4444; border-radius:12px;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><div style="font-size:11px; font-weight:bold; color:#DC2626;">ĐỀ XUẤT ${d.type==='income'?'THU':'CHI'}</div><strong>${d.createdByName}</strong><br><span style="font-size:13px;">${d.description}</span>: <b style="color:${color}; font-size:16px;">${d.type==='income'?'+':'-'}${d.amount.toLocaleString()}đ</b></div>${isManager ? `<div style="display:flex; flex-direction:column; gap:5px;"><button class="btn-sm btn-success btn-3d" onclick="window.reviewTx('${d.id}', true)">Duyệt</button><button class="btn-sm btn-danger btn-3d" onclick="window.reviewTx('${d.id}', false)">Hủy</button></div>` : ''}</div></div>`;
         }
     });
 }
@@ -208,7 +246,7 @@ function renderMemberList() {
         let badge = (memberPhone === currentGroupData.ownerId) ? '<span class="role-badge role-owner" style="margin:0;">👑 Trưởng</span>' : (currentGroupData.deputies && currentGroupData.deputies.includes(memberPhone)) ? '<span class="role-badge role-deputy" style="margin:0;">⭐ Phó</span>' : '<span class="role-badge role-member" style="margin:0;">👥 TV</span>';
         let settingsBtnHtml = (userRole === 'owner' || memberPhone === currentUser.phone) ? `<button class="btn-sm btn-secondary btn-3d" onclick="window.openSettings('${memberPhone}')" style="width: 100%; margin-top: 10px;">⚙️ Cài đặt</button>` : '';
         let isOpenClass = (memberPhone === currentlyOpenMember) ? 'open' : '';
-        memberListDiv.innerHTML += `<div class="member-item"><div class="member-summary" onclick="window.toggleMemberDetails('${memberPhone}')"><div style="display:flex; align-items:center; gap: 10px;"><img src="${uInfo.avatar || defaultAvatar}" class="avatar-img" style="width:35px; height:35px;"><b>${uInfo.name}</b></div><div style="display:flex; align-items:center; gap: 5px;">${badge} <span style="color:gray; font-size:12px;">▼</span></div></div><div id="details-${memberPhone}" class="member-details ${isOpenClass}"><p style="margin-bottom: 5px;">📞 <b>SĐT:</b> ${memberPhone}</p><p style="margin-bottom: 5px;">🏠 <b>Địa chỉ:</b> ${uInfo.address || 'Chưa cập nhật'}</p><div class="contact-actions"><a href="tel:${memberPhone}" class="btn-call">📞 Gọi</a><a href="https://zalo.me/${memberPhone}" target="_blank" class="btn-zalo">💬 Zalo</a></div>${settingsBtnHtml}</div></div>`;
+        memberListDiv.innerHTML += `<div class="member-item"><div class="member-summary" onclick="window.toggleMemberDetails('${memberPhone}')"><div style="display:flex; align-items:center; gap: 10px;"><img src="${uInfo.avatar || defaultAvatar}" class="avatar-img" style="width:35px; height:35px;"><b>${uInfo.name}</b></div><div style="display:flex; align-items:center; gap: 5px;">${badge} <span style="color:gray; font-size:12px;">▼</span></div></div><div id="details-${memberPhone}" class="member-details ${isOpenClass}"><p style="margin-bottom: 5px;">📞 <b>SĐT:</b> ${memberPhone}</p><p style="margin-bottom: 5px;">🏠 <b>Địa chỉ:</b> ${uInfo.address || 'Chưa cập nhật'}</p><div class="contact-actions"><a href="tel:${memberPhone}" class="btn-call">📞 Gọi ngay</a><a href="https://zalo.me/${memberPhone}" target="_blank" class="btn-zalo">💬 Chat Zalo</a></div>${settingsBtnHtml}</div></div>`;
     });
 }
 
@@ -230,7 +268,6 @@ function renderPaginatedTransactions() {
 document.getElementById('btn-tx-prev-page').addEventListener('click', () => { if (currentTxPage > 1) { currentTxPage--; renderPaginatedTransactions(); } });
 document.getElementById('btn-tx-next-page').addEventListener('click', () => { currentTxPage++; renderPaginatedTransactions(); });
 
-
 // LISTENERS LÕI
 function initRealtimeListeners() {
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), async (snap) => {
@@ -244,8 +281,16 @@ function initRealtimeListeners() {
         const mData = await getUsersData(currentGroupData.members); cachedGroupMembersArray = currentGroupData.members.map(p => ({ phone:p, ...mData[p] })); renderMemberList();
         pendingMembersArr = (currentGroupData.pendingInvites || []).map(inv => ({ type: 'member_invite', data: inv })); renderUnifiedPendingList();
     });
-    if(unsubAnno) unsubAnno(); unsubAnno = onSnapshot(query(collection(db, "groups", currentGroupId, "announcements"), orderBy("createdAt", "desc")), (snap) => { groupAnnouncements = []; snap.forEach(d => groupAnnouncements.push({id: d.id, ...d.data()})); renderAnnouncements(); });
+    
+    if(unsubAnno) unsubAnno(); 
+    unsubAnno = onSnapshot(query(collection(db, "groups", currentGroupId, "announcements"), orderBy("createdAt", "desc")), (snap) => { 
+        groupAnnouncements = []; snap.forEach(d => groupAnnouncements.push({id: d.id, ...d.data()})); 
+        renderAnnouncements(); 
+        if (currentOpenAnnoId) renderAnnoModalContent(); // Realtime update inside Popup!
+    });
+    
     unsubCampaigns = onSnapshot(collection(db, "groups", currentGroupId, "campaigns"), (snap) => { const list = document.getElementById('campaign-list'); const sel = document.getElementById('tx-campaign-select'); list.innerHTML = ''; sel.innerHTML = '<option value="">-- Quỹ chung --</option>'; snap.forEach(d => { if(d.data().status==='active'){ list.innerHTML += `<div class="campaign-card"><div class="campaign-header"><span>🏕️ ${d.data().name}</span><span class="campaign-balance">${d.data().balance.toLocaleString()}đ</span></div>${isManager?`<button class="btn-close-campaign" onclick="window.closeCampaign('${d.id}','${d.data().name}')">Tất toán</button>`:''}</div>`; sel.innerHTML += `<option value="${d.id}">${d.data().name}</option>`; }}); });
+    
     unsubTx = onSnapshot(query(collection(db, "groups", currentGroupId, "transactions"), orderBy("createdAt", "desc")), (snap) => {
         approvedTransactions = []; pendingTxArr = []; cachedTransactions = [];
         snap.forEach(d => { cachedTransactions.push({id:d.id, ...d.data()}); if(d.data().status==='pending') pendingTxArr.push({type:'transaction', data:{id:d.id, ...d.data()}}); else approvedTransactions.push({id:d.id, ...d.data()}); });
@@ -269,6 +314,6 @@ function applyFilter() { const type = document.getElementById('filter-type').val
 window.toggleDeputy = async (phone, isCurrentlyDeputy) => { if (userRole !== 'owner') return; try { await updateDoc(doc(db, "groups", currentGroupId), { deputies: isCurrentlyDeputy ? arrayRemove(phone) : arrayUnion(phone) }); sendNotification(phone, "Quyền hạn", `Bạn vừa được ${isCurrentlyDeputy?'giáng cấp':'lên Phó nhóm'}`, currentGroupId); } catch (e){} };
 window.removeMember = async (phone) => { if (userRole !== 'owner') return; if (!confirm(`Xóa ${phone}?`)) return; try { await updateDoc(doc(db, "groups", currentGroupId), { members: arrayRemove(phone), deputies: arrayRemove(phone) }); sendNotification(phone, "Bị xóa khỏi nhóm", `Bạn bị xóa khỏi ${currentGroupData.name}`, null); } catch (e){} };
 document.getElementById('btn-income').addEventListener('click', () => { txType = "income"; txModal.classList.remove('hidden'); }); document.getElementById('btn-expense').addEventListener('click', () => { txType = "expense"; txModal.classList.remove('hidden'); }); document.getElementById('btn-cancel-tx').addEventListener('click', () => txModal.classList.add('hidden'));
-document.getElementById('btn-submit-tx').addEventListener('click', async () => { let amount = parseInt(document.getElementById('tx-amount').value); const desc = document.getElementById('tx-desc').value; const campaignId = document.getElementById('tx-campaign-select').value; if (!amount || amount <= 0 || !desc) return alert("Nhập đầy đủ!"); const changeAmount = txType === "expense" ? -amount : amount; const txStatus = isManager ? "approved" : "pending"; try { if (isManager) { const targetRef = campaignId ? doc(db, "groups", currentGroupId, "campaigns", campaignId) : doc(db, "groups", currentGroupId); await updateDoc(targetRef, { balance: increment(changeAmount) }); } await addDoc(collection(db, "groups", currentGroupId, "transactions"), { type: txType, amount: amount, description: desc, campaignId: campaignId || null, creatorPhone: currentUser.phone, createdByName: currentUser.name, status: txStatus, reactions: {}, comments: [], createdAt: serverTimestamp() }); txModal.classList.add('hidden'); document.getElementById('tx-amount').value = ''; document.getElementById('tx-desc').value = ''; if (!isManager) { alert("Đã gửi đề xuất duyệt!"); const managers = [currentGroupData.ownerId, ...(currentGroupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất giao dịch", `${currentUser.name} đề xuất ${txType==='income'?'THU':'CHI'} ${amount.toLocaleString()}đ`, currentGroupId)); } } catch (e){} });
+document.getElementById('btn-submit-tx').addEventListener('click', async () => { let amount = parseInt(document.getElementById('tx-amount').value); const desc = document.getElementById('tx-desc').value; const campaignId = document.getElementById('tx-campaign-select').value; if (!amount || amount <= 0 || !desc) return alert("Nhập đầy đủ!"); const changeAmount = txType === "expense" ? -amount : amount; const txStatus = isManager ? "approved" : "pending"; try { if (isManager) { const targetRef = campaignId ? doc(db, "groups", currentGroupId, "campaigns", campaignId) : doc(db, "groups", currentGroupId); await updateDoc(targetRef, { balance: increment(changeAmount) }); } await addDoc(collection(db, "groups", currentGroupId, "transactions"), { type: txType, amount: amount, description: desc, campaignId: campaignId || null, creatorPhone: currentUser.phone, createdByName: currentUser.name, status: txStatus, reactions: {}, comments: [], createdAt: serverTimestamp() }); txModal.classList.add('hidden'); document.getElementById('tx-amount').value = ''; document.getElementById('tx-desc').value = ''; if (!isManager) { alert("Đã gửi đề xuất duyệt!"); const managers = [currentGroupData.ownerId, ...(currentGroupData.deputies || [])]; managers.forEach(mgr => sendNotification(mgr, "Đề xuất giao dịch", `${currentUser.name} đề xuất ${txType==='income'?'THU':'CHI'} ${amount.toLocaleString()}đ`, currentGroupId)); } } catch (e) { alert("Lỗi: " + e.message); } });
 document.getElementById('btn-create-campaign').addEventListener('click', async () => { const name = await window.customPrompt("Tạo Quỹ Sự Kiện", "", "Tên sự kiện mới..."); if (!name) return; try { await addDoc(collection(db, "groups", currentGroupId, "campaigns"), { name: name, status: "active", balance: 0, createdAt: serverTimestamp() }); } catch (e){} });
 window.closeCampaign = async (campaignId, campaignName) => { if (!confirm(`Tất toán "${campaignName}"?`)) return; const groupRef = doc(db, "groups", currentGroupId); const campaignRef = doc(db, "groups", currentGroupId, "campaigns", campaignId); try { await runTransaction(db, async (t) => { const gDoc = await t.get(groupRef); const cDoc = await t.get(campaignRef); const cBal = cDoc.data().balance; t.update(groupRef, { balance: (gDoc.data().balance || 0) + cBal }); t.update(campaignRef, { balance: 0, status: "closed" }); t.set(doc(collection(db, "groups", currentGroupId, "transactions")), { type: cBal >= 0 ? "income" : "expense", amount: Math.abs(cBal), description: `Tất toán: ${campaignName}`, campaignId: null, creatorPhone: "system", createdByName: "HỆ THỐNG", status: "approved", createdAt: serverTimestamp() }); }); } catch (e){} };
