@@ -2,12 +2,14 @@ import { db } from "./firebase.js";
 import {
   collection,
   addDoc,
-  getDocs
+  getDocs,
+  updateDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ===== LOGIN GIẢ LẬP =====
 let currentUser = null;
 
+// ===== LOGIN =====
 function login() {
   const phone = document.getElementById("phone").value;
   if (!phone) return alert("Nhập số điện thoại!");
@@ -17,7 +19,6 @@ function login() {
 
   loadGroups();
 }
-
 window.login = login;
 
 // ===== TẠO NHÓM =====
@@ -28,38 +29,96 @@ async function createGroup() {
   if (!name) return;
 
   await addDoc(collection(db, "groups"), {
-    name: name,
-    balance: 0,
-    createdAt: new Date()
+    name,
+    balance: 0
   });
 
-  alert("Đã tạo nhóm!");
   loadGroups();
 }
-
 window.createGroup = createGroup;
 
-// ===== LOAD DANH SÁCH NHÓM =====
+// ===== LOAD NHÓM =====
 async function loadGroups() {
   const container = document.getElementById("groups");
   container.innerHTML = "";
 
   const snapshot = await getDocs(collection(db, "groups"));
 
-  snapshot.forEach(doc => {
-    const group = doc.data();
+  snapshot.forEach(docSnap => {
+    const group = docSnap.data();
+    const id = docSnap.id;
 
     const div = document.createElement("div");
-    div.style.background = "white";
+    div.style.border = "1px solid #ccc";
     div.style.padding = "10px";
-    div.style.marginBottom = "10px";
-    div.style.borderRadius = "10px";
+    div.style.marginTop = "10px";
 
     div.innerHTML = `
       <h3>${group.name}</h3>
-      <p>Số dư: ${group.balance.toLocaleString()} VND</p>
+      <p>💰 ${group.balance} VND</p>
+
+      <button onclick="addMoney('${id}', ${group.balance})">+ Thu</button>
+      <button onclick="spendMoney('${id}', ${group.balance})">- Chi</button>
+      <button onclick="viewHistory('${id}')">📜 Lịch sử</button>
     `;
 
     container.appendChild(div);
   });
 }
+
+// ===== THU =====
+async function addMoney(id, balance) {
+  const amount = parseInt(prompt("Nhập tiền thu:"));
+  if (!amount) return;
+
+  await updateDoc(doc(db, "groups", id), {
+    balance: balance + amount
+  });
+
+  await addDoc(collection(db, "transactions"), {
+    groupId: id,
+    type: "income",
+    amount,
+    time: new Date()
+  });
+
+  loadGroups();
+}
+window.addMoney = addMoney;
+
+// ===== CHI =====
+async function spendMoney(id, balance) {
+  const amount = parseInt(prompt("Nhập tiền chi:"));
+  if (!amount) return;
+
+  await updateDoc(doc(db, "groups", id), {
+    balance: balance - amount
+  });
+
+  await addDoc(collection(db, "transactions"), {
+    groupId: id,
+    type: "expense",
+    amount,
+    time: new Date()
+  });
+
+  loadGroups();
+}
+window.spendMoney = spendMoney;
+
+// ===== LỊCH SỬ =====
+async function viewHistory(groupId) {
+  const snapshot = await getDocs(collection(db, "transactions"));
+
+  let text = "📜 Lịch sử:\n\n";
+
+  snapshot.forEach(doc => {
+    const t = doc.data();
+    if (t.groupId === groupId) {
+      text += `${t.type === "income" ? "+ Thu" : "- Chi"}: ${t.amount} VND\n`;
+    }
+  });
+
+  alert(text || "Chưa có dữ liệu");
+}
+window.viewHistory = viewHistory;
