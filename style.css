@@ -231,3 +231,37 @@ body {
     font-size: 13px;
     color: gray;
 }
+/* Nhãn dán phân quyền (Badge) */
+.role-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.role-owner { background-color: #ffc107; color: #856404; } /* Vàng */
+.role-deputy { background-color: #17a2b8; } /* Xanh ngọc */
+.role-member { background-color: #6c757d; } /* Xám */
+
+/* Tối ưu lại thẻ nhóm ngoài Dashboard */
+.group-item-card {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: 0.2s;
+    border: 1px solid #eee;
+}
+.group-item-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.group-item-balance {
+    font-size: 14px;
+    color: #333;
+}
