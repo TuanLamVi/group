@@ -97,3 +97,17 @@ body { background-color: #f4f6f8; color: #333; display: flex; justify-content: c
 .contact-actions a:active { transform: translateY(3px); box-shadow: 0 0 0 transparent; }
 .btn-call { background-color: #28a745; }
 .btn-zalo { background-color: #0068ff; }
+/* Giao diện Hộp Thông Báo */
+.noti-item {
+    padding: 12px; border-radius: 8px; border-left: 4px solid #ccc;
+    background: #f8f9fa; font-size: 14px; cursor: pointer;
+    transition: 0.2s;
+}
+.noti-item:hover { background: #f1f3f5; }
+.noti-item.unread {
+    background: #e6f2ff; border-left-color: #007bff;
+}
+.noti-item.unread .noti-title { font-weight: bold; color: #0056b3; }
+.noti-title { color: #555; margin-bottom: 4px; font-size: 15px; }
+.noti-body { color: #333; }
+.noti-time { font-size: 11px; color: gray; margin-top: 6px; }
