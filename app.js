@@ -17,31 +17,27 @@ const authScreen = document.getElementById('auth-screen');
 const dashboardScreen = document.getElementById('dashboard-screen');
 const mainScreen = document.getElementById('main-screen');
 const txModal = document.getElementById('tx-modal');
-const profileModal = document.getElementById('profile-modal');
+const settingsModal = document.getElementById('settings-modal'); // Trỏ vào modal mới
 
 let currentUser = null; 
 let currentGroupId = null; 
+let currentGroupData = null; // Biến mới để lưu thông tin nhóm hiện tại
 let txType = ""; 
 let userRole = 'member'; 
 let isManager = false;   
 
 let unsubUser = null; let unsubGroup = null; let unsubCampaigns = null; let unsubTx = null;
 
-// BỘ ĐỆM LƯU TRỮ THÔNG TIN NGƯỜI DÙNG (Giảm tải số lần gọi Database)
+// BỘ ĐỆM CACHE DANH BẠ
 const userCache = {};
 async function getUsersData(phoneArray) {
     const result = {};
     for (const phone of phoneArray) {
-        if (userCache[phone]) {
-            result[phone] = userCache[phone];
-        } else {
+        if (userCache[phone]) { result[phone] = userCache[phone]; } 
+        else {
             const snap = await getDoc(doc(db, "users", phone));
-            if (snap.exists()) {
-                userCache[phone] = snap.data();
-                result[phone] = snap.data();
-            } else {
-                result[phone] = { name: "Thành viên ẩn", phone: phone, address: "Không có thông tin" };
-            }
+            if (snap.exists()) { userCache[phone] = snap.data(); result[phone] = snap.data(); } 
+            else { result[phone] = { name: "Thành viên ẩn", phone: phone, address: "Không có thông tin" }; }
         }
     }
     return result;
@@ -49,64 +45,44 @@ async function getUsersData(phoneArray) {
 
 // ================= 1. HỆ THỐNG XÁC THỰC =================
 document.getElementById('link-to-register').addEventListener('click', () => {
-    document.getElementById('login-form').classList.add('hidden');
-    document.getElementById('register-form').classList.remove('hidden');
-    document.getElementById('auth-title').innerText = "Đăng ký tài khoản";
+    document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('auth-title').innerText = "Đăng ký tài khoản";
 });
-
 document.getElementById('link-to-login').addEventListener('click', () => {
-    document.getElementById('register-form').classList.add('hidden');
-    document.getElementById('login-form').classList.remove('hidden');
-    document.getElementById('auth-title').innerText = "Đăng nhập";
+    document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('auth-title').innerText = "Đăng nhập";
 });
 
 document.getElementById('btn-register-submit').addEventListener('click', async () => {
-    const name = document.getElementById('reg-name').value.trim();
-    const phone = document.getElementById('reg-phone').value.trim();
-    const address = document.getElementById('reg-address').value.trim();
-    const password = document.getElementById('reg-password').value.trim();
-
-    if (!name || phone.length < 9 || password.length < 8) return alert("Vui lòng nhập Họ tên, SĐT và Mật khẩu > 8 ký tự!");
-
+    const name = document.getElementById('reg-name').value.trim(); const phone = document.getElementById('reg-phone').value.trim(); const address = document.getElementById('reg-address').value.trim(); const password = document.getElementById('reg-password').value.trim();
+    if (!name || phone.length < 9 || password.length < 8) return alert("Vui lòng nhập đầy đủ thông tin (Mật khẩu > 8 ký tự)!");
     try {
         const userRef = doc(db, "users", phone);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) return alert("Số điện thoại này đã được đăng ký!");
-
+        if ((await getDoc(userRef)).exists()) return alert("Số điện thoại đã được đăng ký!");
         await setDoc(userRef, { name, phone, address, password, avatar: "", createdAt: serverTimestamp() });
-        alert("Đăng ký thành công! Vui lòng đăng nhập.");
-        document.getElementById('link-to-login').click();
+        alert("Đăng ký thành công!"); document.getElementById('link-to-login').click();
     } catch (e) { alert("Lỗi: " + e.message); }
 });
 
 document.getElementById('btn-login-submit').addEventListener('click', async () => {
-    const phone = document.getElementById('login-phone').value.trim();
-    const password = document.getElementById('login-password').value.trim();
+    const phone = document.getElementById('login-phone').value.trim(); const password = document.getElementById('login-password').value.trim();
     if (!phone || !password) return alert("Vui lòng nhập SĐT và mật khẩu!");
-
     try {
-        const userRef = doc(db, "users", phone);
-        const snap = await getDoc(userRef);
+        const snap = await getDoc(doc(db, "users", phone));
         if (!snap.exists() || snap.data().password !== password) return alert("Sai SĐT hoặc mật khẩu!");
         loginSuccess(phone);
     } catch (e) { alert("Lỗi: " + e.message); }
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-    const savedPhone = localStorage.getItem('userPhone'); 
-    if (savedPhone) loginSuccess(savedPhone);
-});
+window.addEventListener('DOMContentLoaded', () => { const savedPhone = localStorage.getItem('userPhone'); if (savedPhone) loginSuccess(savedPhone); });
 
 function loginSuccess(phone) {
     localStorage.setItem('userPhone', phone);
     authScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden');
-    
     if(unsubUser) unsubUser();
     unsubUser = onSnapshot(doc(db, "users", phone), (docSnap) => {
         if(docSnap.exists()) {
             currentUser = docSnap.data();
-            const avatarUrl = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=random&color=fff`;
-            document.getElementById('user-avatar').src = avatarUrl;
+            userCache[currentUser.phone] = currentUser; // Đưa luôn mình vào cache
+            document.getElementById('user-avatar').src = currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=random&color=fff`;
             document.getElementById('user-name-display').innerText = currentUser.name;
             document.getElementById('user-phone-display').innerText = currentUser.phone;
         }
@@ -122,32 +98,8 @@ document.getElementById('btn-logout').addEventListener('click', () => {
     dashboardScreen.classList.add('hidden'); mainScreen.classList.add('hidden'); authScreen.classList.remove('hidden');
 });
 
-// ================= 2. CẬP NHẬT PROFILE =================
-document.getElementById('btn-edit-profile').addEventListener('click', () => {
-    document.getElementById('edit-profile-name').value = currentUser.name;
-    document.getElementById('edit-profile-address').value = currentUser.address || "";
-    document.getElementById('edit-profile-avatar').value = currentUser.avatar || "";
-    profileModal.classList.remove('hidden');
-});
 
-document.getElementById('btn-cancel-profile').addEventListener('click', () => profileModal.classList.add('hidden'));
-
-document.getElementById('btn-submit-profile').addEventListener('click', async () => {
-    const newName = document.getElementById('edit-profile-name').value.trim();
-    const newAddress = document.getElementById('edit-profile-address').value.trim();
-    const newAvatar = document.getElementById('edit-profile-avatar').value.trim();
-    if(!newName) return alert("Tên không được để trống!");
-    
-    try {
-        await updateDoc(doc(db, "users", currentUser.phone), { name: newName, address: newAddress, avatar: newAvatar });
-        // Cập nhật lại cache để giao diện nhóm cũng tự động đổi tên/ảnh
-        userCache[currentUser.phone] = { ...currentUser, name: newName, address: newAddress, avatar: newAvatar };
-        profileModal.classList.add('hidden');
-        alert("Cập nhật thành công!");
-    } catch(e) { alert("Lỗi: " + e.message); }
-});
-
-// ================= 3. QUẢN LÝ NHÓM =================
+// ================= 2. QUẢN LÝ NHÓM (DASHBOARD) =================
 function loadUserGroups(phone) {
     const q = query(collection(db, "groups"), where("members", "array-contains", phone));
     onSnapshot(q, (snapshot) => {
@@ -172,56 +124,99 @@ window.enterGroup = (groupId) => {
 
 document.getElementById('btn-back-dashboard').addEventListener('click', () => {
     if(unsubGroup) unsubGroup(); if(unsubCampaigns) unsubCampaigns(); if(unsubTx) unsubTx();
-    currentGroupId = null; mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden');
+    currentGroupId = null; currentGroupData = null; mainScreen.classList.add('hidden'); dashboardScreen.classList.remove('hidden');
 });
 
-// ================= 4. CHI TIẾT NHÓM & RENDER DANH BẠ =================
 
-// Hàm Toàn Cục để xử lý hiệu ứng Xổ xuống
+// ================= 3. MODAL CÀI ĐẶT THÔNG MINH (THÔNG TIN + PHÂN QUYỀN) =================
+document.getElementById('btn-edit-profile').addEventListener('click', () => { window.openSettings(currentUser.phone); }); // Mở từ Dashboard
+document.getElementById('btn-cancel-settings').addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+window.openSettings = async (targetPhone) => {
+    const isSelf = (targetPhone === currentUser.phone);
+    const targetUser = userCache[targetPhone] || { name: "", address: "", avatar: "" };
+
+    // --- PHẦN 1: Tải dữ liệu vào form thông tin ---
+    document.getElementById('edit-profile-name').value = targetUser.name;
+    document.getElementById('edit-profile-address').value = targetUser.address || "";
+    document.getElementById('edit-profile-avatar').value = targetUser.avatar || "";
+
+    // Nếu không phải đang xem bản thân, Khóa form lại không cho nhập
+    document.getElementById('edit-profile-name').disabled = !isSelf;
+    document.getElementById('edit-profile-address').disabled = !isSelf;
+    document.getElementById('edit-profile-avatar').disabled = !isSelf;
+    
+    // Nút Lưu thông tin chỉ hiện khi là tài khoản của mình
+    const btnSubmitProfile = document.getElementById('btn-submit-profile');
+    if (isSelf) btnSubmitProfile.classList.remove('hidden');
+    else btnSubmitProfile.classList.add('hidden');
+
+    // --- PHẦN 2: Render các quyền Quản trị (Chỉ mở trong Nhóm & là Trưởng nhóm) ---
+    const adminSection = document.getElementById('settings-section-admin');
+    const adminActions = document.getElementById('admin-actions-container');
+    adminSection.classList.add('hidden'); adminActions.innerHTML = '';
+
+    if (currentGroupId && currentGroupData && userRole === 'owner' && !isSelf) {
+        const isDeputy = currentGroupData.deputies && currentGroupData.deputies.includes(targetPhone);
+        
+        adminSection.classList.remove('hidden');
+        adminActions.innerHTML = `
+            <button class="btn-sm ${isDeputy ? 'btn-secondary' : 'btn-success'}" onclick="window.toggleDeputy('${targetPhone}', ${isDeputy}); document.getElementById('settings-modal').classList.add('hidden');" style="flex:1; padding:10px;">${isDeputy ? '📉 Giáng cấp' : '📈 Lên phó'}</button>
+            <button class="btn-sm btn-danger" onclick="window.removeMember('${targetPhone}'); document.getElementById('settings-modal').classList.add('hidden');" style="flex:1; padding:10px;">❌ Xóa thành viên</button>
+        `;
+    }
+
+    settingsModal.classList.remove('hidden');
+};
+
+document.getElementById('btn-submit-profile').addEventListener('click', async () => {
+    const newName = document.getElementById('edit-profile-name').value.trim();
+    const newAddress = document.getElementById('edit-profile-address').value.trim();
+    const newAvatar = document.getElementById('edit-profile-avatar').value.trim();
+    if(!newName) return alert("Tên không được để trống!");
+    try {
+        await updateDoc(doc(db, "users", currentUser.phone), { name: newName, address: newAddress, avatar: newAvatar });
+        userCache[currentUser.phone] = { ...currentUser, name: newName, address: newAddress, avatar: newAvatar };
+        settingsModal.classList.add('hidden'); alert("Đã lưu thông tin!");
+    } catch(e) { alert("Lỗi: " + e.message); }
+});
+
+
+// ================= 4. CHI TIẾT NHÓM & DANH BẠ =================
 window.toggleMemberDetails = (phone) => {
-    const el = document.getElementById(`details-${phone}`);
-    if(el) el.classList.toggle('hidden');
+    const el = document.getElementById(`details-${phone}`); if(el) el.classList.toggle('hidden');
 };
 
 function initRealtimeListeners() {
     unsubGroup = onSnapshot(doc(db, "groups", currentGroupId), async (docSnap) => {
         if (!docSnap.exists()) return;
-        const data = docSnap.data();
-        if (!data.members.includes(currentUser.phone)) { alert("Bạn đã bị xóa khỏi nhóm!"); document.getElementById('btn-back-dashboard').click(); return; }
-
-        document.getElementById('group-name').innerText = data.name;
-        document.getElementById('balance').innerText = (data.balance || 0).toLocaleString();
+        currentGroupData = docSnap.data(); // Cập nhật biến toàn cục
         
-        if (data.ownerId === currentUser.phone) { userRole = 'owner'; document.getElementById('user-role').innerHTML = '<span class="role-badge role-owner">👑 Trưởng nhóm</span>'; } 
-        else if (data.deputies && data.deputies.includes(currentUser.phone)) { userRole = 'deputy'; document.getElementById('user-role').innerHTML = '<span class="role-badge role-deputy">⭐ Phó nhóm</span>'; } 
+        if (!currentGroupData.members.includes(currentUser.phone)) { alert("Bạn đã bị xóa khỏi nhóm!"); document.getElementById('btn-back-dashboard').click(); return; }
+
+        document.getElementById('group-name').innerText = currentGroupData.name; document.getElementById('balance').innerText = (currentGroupData.balance || 0).toLocaleString();
+        
+        if (currentGroupData.ownerId === currentUser.phone) { userRole = 'owner'; document.getElementById('user-role').innerHTML = '<span class="role-badge role-owner">👑 Trưởng nhóm</span>'; } 
+        else if (currentGroupData.deputies && currentGroupData.deputies.includes(currentUser.phone)) { userRole = 'deputy'; document.getElementById('user-role').innerHTML = '<span class="role-badge role-deputy">⭐ Phó nhóm</span>'; } 
         else { userRole = 'member'; document.getElementById('user-role').innerHTML = '<span class="role-badge role-member">👥 Thành viên</span>'; }
-        isManager = (userRole === 'owner' || userRole === 'deputy');
         
+        isManager = (userRole === 'owner' || userRole === 'deputy');
         document.getElementById('btn-create-campaign').classList.toggle('hidden', !isManager);
-        document.getElementById('btn-income').innerText = isManager ? "➕ Thu tiền" : "➕ Đề xuất Thu";
-        document.getElementById('btn-expense').innerText = isManager ? "➖ Chi tiền" : "➖ Đề xuất Chi";
+        document.getElementById('btn-income').innerText = isManager ? "➕ Thu tiền" : "➕ Đề xuất Thu"; document.getElementById('btn-expense').innerText = isManager ? "➖ Chi tiền" : "➖ Đề xuất Chi";
 
-        // ---- RENDER DANH SÁCH THÀNH VIÊN KIỂU XỔ XUỐNG ----
+        // ---- RENDER DANH BẠ VÀ NÚT CÀI ĐẶT ----
         const memberListDiv = document.getElementById('member-list');
         memberListDiv.innerHTML = '<div style="text-align:center; color:gray; font-size:12px; padding: 10px;">Đang tải danh bạ...</div>';
-        
-        const membersData = await getUsersData(data.members);
+        const membersData = await getUsersData(currentGroupData.members);
         memberListDiv.innerHTML = '';
         
-        data.members.forEach(memberPhone => {
+        currentGroupData.members.forEach(memberPhone => {
             const uInfo = membersData[memberPhone];
             const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(uInfo.name)}&background=random&color=fff`;
+            let badge = (memberPhone === currentGroupData.ownerId) ? '<span class="role-badge role-owner" style="font-size:10px; margin:0;">👑 Trưởng</span>' : (currentGroupData.deputies && currentGroupData.deputies.includes(memberPhone)) ? '<span class="role-badge role-deputy" style="font-size:10px; margin:0;">⭐ Phó</span>' : '<span class="role-badge role-member" style="font-size:10px; margin:0;">👥 TV</span>';
             
-            let badge = (memberPhone === data.ownerId) ? '<span class="role-badge role-owner" style="font-size:10px; margin:0;">👑 Trưởng</span>' : (data.deputies && data.deputies.includes(memberPhone)) ? '<span class="role-badge role-deputy" style="font-size:10px; margin:0;">⭐ Phó</span>' : '<span class="role-badge role-member" style="font-size:10px; margin:0;">👥 TV</span>';
-            
-            let actionHtml = '';
-            if (userRole === 'owner' && memberPhone !== data.ownerId) {
-                let isDep = data.deputies && data.deputies.includes(memberPhone);
-                actionHtml = `<div style="display:flex; gap:10px; margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 10px;">
-                    <button class="btn-sm ${isDep ? 'btn-secondary' : 'btn-success'}" onclick="window.toggleDeputy('${memberPhone}', ${isDep})" style="flex:1;">${isDep ? 'Giáng cấp' : 'Lên phó'}</button>
-                    <button class="btn-sm btn-danger" onclick="window.removeMember('${memberPhone}')" style="flex:1;">Xóa người này</button>
-                </div>`;
-            }
+            // Chỉ hiện nút Cài đặt nếu mình là Trưởng nhóm (để quản lý họ) HOẶC nếu đó là chính mình (để xem/sửa profile)
+            let settingsBtnHtml = (userRole === 'owner' || memberPhone === currentUser.phone) ? `<button class="btn-sm btn-secondary" onclick="window.openSettings('${memberPhone}')" style="width: 100%; margin-top: 10px; padding: 8px;">⚙️ Cài đặt</button>` : '';
 
             memberListDiv.innerHTML += `
                 <div class="member-item">
@@ -230,63 +225,41 @@ function initRealtimeListeners() {
                             <img src="${uInfo.avatar || defaultAvatar}" class="avatar-img" style="width:35px; height:35px; border:1px solid #ccc;">
                             <b>${uInfo.name}</b>
                         </div>
-                        <div style="display:flex; align-items:center; gap: 5px;">
-                            ${badge} <span style="color:gray; font-size:12px;">▼</span>
-                        </div>
+                        <div style="display:flex; align-items:center; gap: 5px;">${badge} <span style="color:gray; font-size:12px;">▼</span></div>
                     </div>
                     
                     <div id="details-${memberPhone}" class="member-details hidden">
                         <p style="margin-bottom: 5px;">📞 <b>Điện thoại:</b> ${memberPhone}</p>
                         <p style="margin-bottom: 5px;">🏠 <b>Địa chỉ:</b> ${uInfo.address || 'Chưa cập nhật'}</p>
-                        
                         <div class="contact-actions">
-                            <a href="tel:${memberPhone}" class="btn-call">📞 Gọi ngay</a>
-                            <a href="https://zalo.me/${memberPhone}" target="_blank" class="btn-zalo">💬 Nhắn Zalo</a>
+                            <a href="tel:${memberPhone}" class="btn-call">📞 Gọi</a>
+                            <a href="https://zalo.me/${memberPhone}" target="_blank" class="btn-zalo">💬 Zalo</a>
                         </div>
-                        ${actionHtml}
+                        ${settingsBtnHtml} <!-- Chèn nút Cài đặt ở đây -->
                     </div>
                 </div>`;
         });
 
-        // ---- RENDER ĐỀ XUẤT THÀNH VIÊN MỚI ----
-        const pendingMembersDiv = document.getElementById('pending-members-list');
-        const pendingSection = document.getElementById('pending-members-section');
-        
-        if (data.pendingMembers && data.pendingMembers.length > 0) {
-            pendingSection.classList.remove('hidden');
-            const pendingData = await getUsersData(data.pendingMembers);
-            pendingMembersDiv.innerHTML = '';
-            data.pendingMembers.forEach(pPhone => {
-                const puInfo = pendingData[pPhone];
-                const defaultAvt = `https://ui-avatars.com/api/?name=${encodeURIComponent(puInfo.name)}&background=random&color=fff`;
-                let pAction = isManager ? `<button class="btn-sm btn-success" onclick="window.approveMember('${pPhone}', true)" style="padding:4px; font-size:11px;">Duyệt</button> <button class="btn-sm btn-danger" onclick="window.approveMember('${pPhone}', false)" style="padding:4px; font-size:11px;">Từ chối</button>` : `<span style="font-size:12px; color:gray;">Đang chờ duyệt...</span>`;
-                pendingMembersDiv.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid #eee;">
-                    <div style="display:flex; align-items:center; gap: 8px;">
-                        <img src="${puInfo.avatar || defaultAvt}" style="width:28px; height:28px; border-radius:50%;">
-                        <div>
-                            <div style="font-size:14px; font-weight:bold;">${puInfo.name}</div>
-                            <div style="font-size:11px; color:gray;">${pPhone}</div>
-                        </div>
-                    </div>
-                    <div>${pAction}</div>
-                </div>`;
+        // ---- RENDER CHỜ DUYỆT THÀNH VIÊN ----
+        const pendingMembersDiv = document.getElementById('pending-members-list'); const pendingSection = document.getElementById('pending-members-section');
+        if (currentGroupData.pendingMembers && currentGroupData.pendingMembers.length > 0) {
+            pendingSection.classList.remove('hidden'); const pendingData = await getUsersData(currentGroupData.pendingMembers); pendingMembersDiv.innerHTML = '';
+            currentGroupData.pendingMembers.forEach(pPhone => {
+                const puInfo = pendingData[pPhone]; const defaultAvt = `https://ui-avatars.com/api/?name=${encodeURIComponent(puInfo.name)}&background=random&color=fff`;
+                let pAction = isManager ? `<button class="btn-sm btn-success" onclick="window.approveMember('${pPhone}', true)" style="padding:4px; font-size:11px;">Duyệt</button> <button class="btn-sm btn-danger" onclick="window.approveMember('${pPhone}', false)" style="padding:4px; font-size:11px;">Từ chối</button>` : `<span style="font-size:12px; color:gray;">Chờ duyệt...</span>`;
+                pendingMembersDiv.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid #eee;"><div style="display:flex; align-items:center; gap: 8px;"><img src="${puInfo.avatar || defaultAvt}" style="width:28px; height:28px; border-radius:50%;"><div><div style="font-size:14px; font-weight:bold;">${puInfo.name}</div><div style="font-size:11px; color:gray;">${pPhone}</div></div></div><div>${pAction}</div></div>`;
             });
         } else { pendingSection.classList.add('hidden'); }
     });
 
-    /* Các phần Lắng nghe Sự Kiện và Giao dịch Thu/Chi giữ nguyên y hệt để tiết kiệm không gian */
+    /* Lắng nghe Quỹ và Lịch sử (Giữ nguyên) */
     unsubCampaigns = onSnapshot(collection(db, "groups", currentGroupId, "campaigns"), (snapshot) => { const campaignList = document.getElementById('campaign-list'); const txSelect = document.getElementById('tx-campaign-select'); campaignList.innerHTML = ''; txSelect.innerHTML = '<option value="">-- Quỹ chung --</option>'; snapshot.forEach((docSnap) => { const data = docSnap.data(); if (data.status === 'active') { campaignList.innerHTML += `<div class="campaign-card"><div class="campaign-header"><span>🏕️ ${data.name}</span><span class="campaign-balance">${data.balance.toLocaleString()} ₫</span></div>${isManager ? `<button class="btn-close-campaign" onclick="window.closeCampaign('${docSnap.id}', '${data.name}')">Tất toán</button>` : ''}</div>`; txSelect.innerHTML += `<option value="${docSnap.id}">${data.name}</option>`; } }); });
     const txQuery = query(collection(db, "groups", currentGroupId, "transactions"), orderBy("createdAt", "desc"));
     unsubTx = onSnapshot(txQuery, (snapshot) => { const pendingList = document.getElementById('pending-list'); const txList = document.getElementById('transaction-list'); const pendingSection = document.getElementById('pending-section'); pendingList.innerHTML = ''; txList.innerHTML = ''; let hasPending = false; snapshot.forEach((docSnap) => { const data = docSnap.data(); const symbol = data.type === 'income' ? '+' : '-'; const color = data.type === 'income' ? 'green' : 'red'; if (data.status === 'pending') { hasPending = true; pendingList.innerHTML += `<li class="transaction-item pending-item"><div><strong>${data.createdBy}</strong> đề xuất ${data.type === 'income' ? 'THU' : 'CHI'}<br><span>${data.description}</span>: <b style="color:${color}">${symbol}${data.amount.toLocaleString()}đ</b></div>${isManager ? `<div class="pending-actions"><button class="btn-approve" onclick="window.reviewTx('${docSnap.id}', true)">Duyệt</button><button class="btn-reject" onclick="window.reviewTx('${docSnap.id}', false)">Hủy</button></div>` : '<span style="font-size: 12px; color: gray;">Chờ duyệt...</span>'}</li>`; } else if (data.status === 'approved') { txList.innerHTML += `<li class="transaction-item"><div class="tx-info"><span class="tx-desc">${data.description}</span><span style="font-size: 12px; color: gray;">Bởi: ${data.createdBy}</span></div><strong style="color: ${color}">${symbol}${data.amount.toLocaleString()} ₫</strong></li>`; } }); pendingSection.classList.toggle('hidden', !hasPending); });
 }
 
-// ================= CÁC THAO TÁC CÒN LẠI =================
-document.getElementById('btn-add-member').addEventListener('click', async () => {
-    const newPhone = prompt("Nhập số điện thoại cần mời:"); if (!newPhone || newPhone.length < 9) return;
-    const userSnap = await getDoc(doc(db, "users", newPhone)); if(!userSnap.exists()) return alert("SĐT này chưa đăng ký tài khoản!");
-    try { const groupRef = doc(db, "groups", currentGroupId); if (isManager) { await updateDoc(groupRef, { members: arrayUnion(newPhone), pendingMembers: arrayRemove(newPhone) }); alert("Đã thêm thành viên!"); } else { await updateDoc(groupRef, { pendingMembers: arrayUnion(newPhone) }); alert("Đã gửi đề xuất thêm thành viên!"); } } catch(e) { alert("Lỗi: " + e.message); }
-});
-
+// ================= 5. THAO TÁC CƠ SỞ DỮ LIỆU CÒN LẠI =================
+document.getElementById('btn-add-member').addEventListener('click', async () => { const newPhone = prompt("Nhập số điện thoại cần mời:"); if (!newPhone || newPhone.length < 9) return; const userSnap = await getDoc(doc(db, "users", newPhone)); if(!userSnap.exists()) return alert("SĐT này chưa đăng ký tài khoản!"); try { const groupRef = doc(db, "groups", currentGroupId); if (isManager) { await updateDoc(groupRef, { members: arrayUnion(newPhone), pendingMembers: arrayRemove(newPhone) }); alert("Đã thêm thành viên!"); } else { await updateDoc(groupRef, { pendingMembers: arrayUnion(newPhone) }); alert("Đã gửi đề xuất thêm thành viên!"); } } catch(e) { alert("Lỗi: " + e.message); } });
 window.approveMember = async (phone, isApprove) => { try { if (isApprove) await updateDoc(doc(db, "groups", currentGroupId), { members: arrayUnion(phone), pendingMembers: arrayRemove(phone) }); else await updateDoc(doc(db, "groups", currentGroupId), { pendingMembers: arrayRemove(phone) }); } catch (e) { alert("Lỗi: " + e.message); } };
 window.toggleDeputy = async (phone, isCurrentlyDeputy) => { if (userRole !== 'owner') return; try { await updateDoc(doc(db, "groups", currentGroupId), { deputies: isCurrentlyDeputy ? arrayRemove(phone) : arrayUnion(phone) }); } catch (e) { alert("Lỗi: "+e.message); } };
 window.removeMember = async (phone) => { if (userRole !== 'owner') return; if (!confirm(`Xóa ${phone}?`)) return; try { await updateDoc(doc(db, "groups", currentGroupId), { members: arrayRemove(phone), deputies: arrayRemove(phone) }); } catch (e) { alert("Lỗi: "+e.message); } };
